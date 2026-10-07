@@ -496,7 +496,9 @@ void aerDriveboardRecorderInitialize(const AerDriveboardRecorderMetadata *metada
         return;
     }
     g_recorder.writerStarted = 1;
+#if !defined(__linux__)
     atexit(aerDriveboardRecorderShutdown);
+#endif
     fprintf(stderr, "AER drive-board recorder enabled: %s (research-only raw transport capture)\n", g_recorder.binaryPath);
 }
 

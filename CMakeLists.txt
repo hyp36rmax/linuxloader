@@ -125,6 +125,7 @@ elseif(WIN32 OR MINGW OR CMAKE_C_COMPILER MATCHES "mingw")
         src/loader/log/*.c
         src/loader/patching/*.c
         src/loader/redirections/*.c
+        src/loader/research/*.c
         src/loader/graphics/shaderWork/*.c
         src/loader/elfLoader/*.cpp
         src/loader/elfLoader/pthread/*.cpp

@@ -24,6 +24,7 @@
 #include "log/log.h"
 #include "patching/patch.h"
 #include "hardware/lindbergh/securityBoard.h"
+#include "research/aerDriveboardRecorder.h"
 
 
 
@@ -283,6 +284,11 @@ void __attribute__((constructor)) hook_init()
     }
 
     initMain("", "");
+}
+
+void __attribute__((destructor)) hook_shutdown()
+{
+    aerDriveboardRecorderShutdown();
 }
 
 static int callback(struct dl_phdr_info *info, size_t size, void *data)

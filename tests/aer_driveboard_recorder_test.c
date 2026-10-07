@@ -61,12 +61,15 @@ static void testDisabled(const char *prefix)
     removeOutputs(prefix);
     AerDriveboardRecorderMetadata metadata = {"DVP-0015", "test-hash", "SDX", "1", 1, 1};
     aerDriveboardRecorderInitialize(&metadata);
+    aerDriveboardRecorderInitialize(&metadata);
     assert(!aerDriveboardRecorderEnabled());
     const uint8_t bytes[] = {1, 2, 3};
     aerDriveboardRecorderCaptureWrite(1, AER_DRIVEBOARD_ENDPOINT_SERIAL0, 4, bytes, sizeof(bytes), 3);
     char path[512];
     snprintf(path, sizeof(path), "%s.aerbin", prefix);
     assert(!fileExists(path));
+    aerDriveboardRecorderShutdown();
+    aerDriveboardRecorderShutdown();
 }
 
 static void verifyMetadata(const char *prefix)
@@ -178,6 +181,7 @@ static void testCapture(const char *prefix)
     removeOutputs(prefix);
     AerDriveboardRecorderMetadata metadata = {"DVP-0015", "synthetic-sha256", "SDX", "1", 1, 1};
     aerDriveboardRecorderInitialize(&metadata);
+    aerDriveboardRecorderInitialize(&metadata);
     assert(aerDriveboardRecorderEnabled());
 
     uint64_t timestamp = aerDriveboardRecorderMonotonicNs();
@@ -209,6 +213,7 @@ static void testCapture(const char *prefix)
         aerDriveboardRecorderCaptureWrite(timestamp++, AER_DRIVEBOARD_ENDPOINT_SERIAL0, 7, &byte, 1, 1);
     }
     aerDriveboardRecorderTestPauseWriter(0);
+    aerDriveboardRecorderShutdown();
     aerDriveboardRecorderShutdown();
     verifyBinary(prefix);
     verifyMetadata(prefix);
