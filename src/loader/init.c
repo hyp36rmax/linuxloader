@@ -17,6 +17,7 @@
 #include "config/config.h"
 #include "../minhook/include/MinHook.h"
 #include "log/log.h"
+#include "research/aerDriveboardRecorder.h"
 
 #if defined(__linux__)
 #include "input/evdevInput.h"
@@ -53,6 +54,16 @@ void initMain(char *configPath, char *controlsPath)
     gGrp = getConfig()->gameGroup;
     gWidth = getConfig()->width;
     gHeight = getConfig()->height;
+
+    AerDriveboardRecorderMetadata aerMetadata = {
+        .gameRevision = getDvpName(),
+        .gameExecutableHash = getenv("AER_GAME_EXECUTABLE_SHA256"),
+        .cabinetType = getenv("AER_CABINET_TYPE"),
+        .cabinetId = getenv("AER_CABINET_ID"),
+        .emulateDriveboard = getConfig()->emulateDriveboard,
+        .skipCabinetCheck = getConfig()->skipOutrunCabinetCheck,
+    };
+    aerDriveboardRecorderInitialize(&aerMetadata);
 
     initFpsLimiter();
 

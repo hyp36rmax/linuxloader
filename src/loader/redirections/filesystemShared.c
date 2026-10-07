@@ -30,6 +30,7 @@
 #include "../resources/lindberghLogo.h"
 #include "../log/log.h"
 #include "filesystemShared.h"
+#include "../research/aerDriveboardRecorder.h"
 
 #ifdef __linux__
 #include <dlfcn.h>
@@ -741,7 +742,12 @@ ssize_t sharedRead(int fd, void *buf, size_t count)
 
     if (fd == (int)hooks[SERIAL0] && getConfig()->emulateDriveboard)
     {
-        return driveboardRead(fd, buf, count);
+        if (!aerDriveboardRecorderEnabled())
+            return driveboardRead(fd, buf, count);
+        uint64_t aerTimestamp = aerDriveboardRecorderMonotonicNs();
+        ssize_t result = driveboardRead(fd, buf, count);
+        aerDriveboardRecorderCaptureRead(aerTimestamp, AER_DRIVEBOARD_ENDPOINT_SERIAL0, fd, buf, count, result);
+        return result;
     }
 
     if ((fd == (int)hooks[SERIAL0] || fd == (int)hooks[SERIAL1]) && getConfig()->emulateHW210CardReader)
@@ -906,7 +912,13 @@ ssize_t sharedWrite(int fd, const void *buf, size_t count)
 
     if (fd == (int)hooks[SERIAL0] && getConfig()->emulateDriveboard)
     {
-        return driveboardWrite(fd, buf, count);
+        if (!aerDriveboardRecorderEnabled())
+            return driveboardWrite(fd, buf, count);
+        AerDriveboardPendingWrite aerWrite;
+        aerDriveboardRecorderPrepareWrite(&aerWrite, AER_DRIVEBOARD_ENDPOINT_SERIAL0, fd, buf, count);
+        ssize_t result = driveboardWrite(fd, buf, count);
+        aerDriveboardRecorderCompleteWrite(&aerWrite, result);
+        return result;
     }
 
     if (fd == (int)hooks[SERIAL1] && getConfig()->emulateDriveboard)
