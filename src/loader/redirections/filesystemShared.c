@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <sys/uio.h>
 #include "../config/config.h"
 #include "../mainShared.h"
 #include "../hardware/lindbergh/baseBoard.h"
@@ -32,6 +33,7 @@
 #include "filesystemShared.h"
 #include "../research/aerDriveboardRecorder.h"
 #include "../research/aerActivationDiagnostics.h"
+#include "../research/aerVirtualDriveboardBridge.h"
 
 #ifdef __linux__
 #include <dlfcn.h>
@@ -265,6 +267,24 @@ int sharedOpen(const char *pathname, int flags, ...)
 
     if (strcmp(pathname, "/dev/ttyS0") == 0 || strcmp(pathname, "/dev/tts/0") == 0)
     {
+        if (aerVdbBridgeRequested())
+        {
+            if (!aerVdbBridgeEligible())
+            {
+                errno = EACCES;
+                return -1;
+            }
+            int virtualFd = _open(HOOK_FILE_NAME, flags, mode);
+            if (virtualFd < 0 || !aerVdbBridgeAttach(virtualFd))
+            {
+                if (virtualFd >= 0)
+                    _close(virtualFd);
+                errno = EIO;
+                return -1;
+            }
+            hooks[SERIAL0] = virtualFd;
+            return virtualFd;
+        }
         if (getConfig()->emulateDriveboard == 0 && getConfig()->emulateRideboard == 0 && getConfig()->emulateHW210CardReader == 0 &&
             getConfig()->emulateTouchscreen == 0)
             return _open(getConfig()->serial1Path, flags, mode);
@@ -691,6 +711,16 @@ int sharedFclose(FILE *stream)
     if (_fclose == NULL)
         _fclose = REAL_FUNC(fclose);
 
+    int fd = fileno(stream);
+    if (aerVdbBridgeContains(fd))
+    {
+        aerVdbBridgeClose(fd);
+        sharedAerForgetFd(fd);
+        if (fd == (int)hooks[SERIAL0])
+            hooks[SERIAL0] = NO_DEVICE;
+        return _fclose(stream);
+    }
+
     for (int i = 0; i < 9; i++)
     {
         if (fileHooks[i] == stream)
@@ -718,7 +748,14 @@ int sharedClose(int fd)
         _close = REAL_FUNC(close);
 #endif
 
-
+    if (aerVdbBridgeContains(fd))
+    {
+        aerVdbBridgeClose(fd);
+        sharedAerForgetFd(fd);
+        if (fd == (int)hooks[SERIAL0])
+            hooks[SERIAL0] = NO_DEVICE;
+        return _close(fd);
+    }
     sharedAerForgetFd(fd);
     for (size_t i = 0; i < (sizeof hooks / sizeof hooks[0]); i++)
     {
@@ -774,7 +811,8 @@ ssize_t sharedRead(int fd, void *buf, size_t count)
     if (_read == NULL)
         _read = REAL_FUNC(read);
 #endif
-
+    if (aerVdbBridgeContains(fd))
+        return aerVdbBridgeRead(fd, buf, count);
     if (fd == (int)hooks[BASEBOARD])
     {
         return baseboardRead(fd, buf, count);
@@ -873,6 +911,59 @@ size_t sharedFread(void *buf, size_t size, size_t count, FILE *stream)
     return _fread(buf, size, count, stream);
 }
 
+size_t sharedFwrite(const void *buf, size_t size, size_t count, FILE *stream)
+{
+    static size_t (*_fwrite)(const void *, size_t, size_t, FILE *) = NULL;
+    if (_fwrite == NULL)
+        _fwrite = REAL_FUNC(fwrite);
+    int fd = fileno(stream);
+    if (aerVdbBridgeContains(fd))
+        return aerVdbBridgeFwrite(fd, buf, size, count);
+    return _fwrite(buf, size, count, stream);
+}
+
+ssize_t sharedWritev(int fd, const struct iovec *iov, int iovcnt)
+{
+    if (aerVdbBridgeContains(fd))
+    {
+        const void *buffers[AER_VDB_MAX_FRAME];
+        size_t sizes[AER_VDB_MAX_FRAME];
+        if (!iov || iovcnt < 0 || iovcnt > AER_VDB_MAX_FRAME) { errno = EINVAL; return -1; }
+        for (int i = 0; i < iovcnt; ++i) { buffers[i] = iov[i].iov_base; sizes[i] = iov[i].iov_len; }
+        return aerVdbBridgeWritev(fd, buffers, sizes, (size_t)iovcnt);
+    }
+#ifdef __linux__
+    static ssize_t (*_writev)(int, const struct iovec *, int) = NULL;
+    if (_writev == NULL) _writev = REAL_FUNC(writev);
+    return _writev(fd, iov, iovcnt);
+#else
+    errno = ENOSYS;
+    return -1;
+#endif
+}
+
+int sharedDup(int fd)
+{
+#ifdef __linux__
+    static int (*_dup)(int) = NULL;
+    if (_dup == NULL) _dup = REAL_FUNC(dup);
+    int destination = _dup(fd);
+#else
+    int destination = _dup(fd);
+#endif
+    if (destination >= 0 && aerVdbBridgeContains(fd) && !aerVdbBridgeDup(fd, destination))
+    {
+#ifdef __linux__
+        close(destination);
+#else
+        _close(destination);
+#endif
+        errno = EMFILE;
+        return -1;
+    }
+    return destination;
+}
+
 static long int (*_ftell)(FILE *stream) = NULL;
 long int sharedFtell(FILE *stream)
 {
@@ -943,7 +1034,8 @@ ssize_t sharedWrite(int fd, const void *buf, size_t count)
     if (_write == NULL)
         _write = REAL_FUNC(write);
 #endif
-
+    if (aerVdbBridgeContains(fd))
+        return aerVdbBridgeWrite(fd, buf, count);
     int diagnosticEndpoint = sharedAerDriveboardEndpointForFd(fd);
     if (diagnosticEndpoint != AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
         driveboardObserveWriteContext(aerDriveboardRecorderMonotonicNs(), diagnosticEndpoint,
@@ -1009,7 +1101,8 @@ int sharedIoctl(int fd, unsigned long int request, ...)
     va_start(args, request);
     void *argp = va_arg(args, void *);
     va_end(args);
-
+    if (aerVdbBridgeContains(fd))
+        return aerVdbBridgeIoctl(fd, request, argp);
 #ifdef __linux__
     static int (*_ioctl)(int fd, int request, void *data) = NULL;
     if (_ioctl == NULL)
@@ -1075,6 +1168,50 @@ int sharedSelect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
 #endif
 
     int baseboardFd = hooks[BASEBOARD];
+    int virtualFd = -1;
+    int virtualRequested = 0;
+    for (int candidate = 0; candidate < nfds && !virtualRequested; ++candidate)
+    {
+        if (!aerVdbBridgeContains(candidate))
+            continue;
+#ifdef __linux__
+        virtualRequested = (readfds && FD_ISSET(candidate, readfds)) ||
+                           (writefds && FD_ISSET(candidate, writefds)) ||
+                           (exceptfds && FD_ISSET(candidate, exceptfds));
+#else
+        virtualRequested = (readfds && LINUX_FD_ISSET_BIT(candidate, readfds)) ||
+                           (writefds && LINUX_FD_ISSET_BIT(candidate, writefds)) ||
+                           (exceptfds && LINUX_FD_ISSET_BIT(candidate, exceptfds));
+#endif
+        if (virtualRequested)
+            virtualFd = candidate;
+    }
+    if (virtualRequested)
+    {
+        int ready = 0;
+#ifdef __linux__
+        if (readfds && FD_ISSET(virtualFd, readfds))
+        {
+            if (aerVdbBridgeReadable(virtualFd)) ready++; else FD_CLR(virtualFd, readfds);
+        }
+        if (writefds && FD_ISSET(virtualFd, writefds))
+        {
+            if (aerVdbBridgeWritable(virtualFd)) ready++; else FD_CLR(virtualFd, writefds);
+        }
+        if (exceptfds && FD_ISSET(virtualFd, exceptfds)) FD_CLR(virtualFd, exceptfds);
+#else
+        if (readfds && LINUX_FD_ISSET_BIT(virtualFd, readfds))
+        {
+            if (aerVdbBridgeReadable(virtualFd)) ready++; else LINUX_FD_CLR_BIT(virtualFd, readfds);
+        }
+        if (writefds && LINUX_FD_ISSET_BIT(virtualFd, writefds))
+        {
+            if (aerVdbBridgeWritable(virtualFd)) ready++; else LINUX_FD_CLR_BIT(virtualFd, writefds);
+        }
+        if (exceptfds && LINUX_FD_ISSET_BIT(virtualFd, exceptfds)) LINUX_FD_CLR_BIT(virtualFd, exceptfds);
+#endif
+        return ready;
+    }
 
     if (baseboardFd >= 0 && baseboardFd < nfds)
     {
@@ -1236,6 +1373,11 @@ size_t fread(void *buf, size_t size, size_t count, FILE *stream)
     return sharedFread(buf, size, count, stream);
 }
 
+size_t fwrite(const void *buf, size_t size, size_t count, FILE *stream)
+{
+    return sharedFwrite(buf, size, count, stream);
+}
+
 long int ftell(FILE *stream)
 {
     return sharedFtell(stream);
@@ -1254,6 +1396,16 @@ void rewind(FILE *stream)
 ssize_t write(int fd, const void *buf, size_t count)
 {
     return sharedWrite(fd, buf, count);
+}
+
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
+{
+    return sharedWritev(fd, iov, iovcnt);
+}
+
+int dup(int fd)
+{
+    return sharedDup(fd);
 }
 
 int ioctl(int fd, unsigned long int request, ...)

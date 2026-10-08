@@ -36,6 +36,8 @@ jobs:
         ./tests/run_aer_driveboard_recorder_tests.sh
         ./tests/run_aer_activation_diagnostics_tests.sh
         ./tests/run_aer_native_activation_tests.sh
+        ./tests/run_aer_virtual_driveboard_bootstrap_tests.sh
+        ./tests/run_aer_virtual_driveboard_bridge_tests.sh
         scripts/windows/windows-build.sh
         echo "artifact_name=LinuxLoader-DEV4-AER01K-WIN32-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 

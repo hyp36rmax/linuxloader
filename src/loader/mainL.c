@@ -27,6 +27,7 @@
 #include "research/aerDriveboardRecorder.h"
 #include "research/aerActivationDiagnostics.h"
 #include "research/aerNativeActivation.h"
+#include "research/aerVirtualDriveboardBridge.h"
 
 
 
@@ -268,6 +269,14 @@ void __attribute__((constructor)) hook_init()
     // We force x11 for SDL so the window do not scale in wayland.
     setenv("SDL_VIDEODRIVER", "x11", 1);
 
+    char aerExecutablePath[PATH_MAX];
+    ssize_t aerExecutableLength = readlink("/proc/self/exe", aerExecutablePath, sizeof(aerExecutablePath) - 1);
+    if (aerExecutableLength > 0)
+    {
+        aerExecutablePath[aerExecutableLength] = '\0';
+        setenv("AER_GAME_EXECUTABLE_PATH", aerExecutablePath, 1);
+    }
+
     // Get offsets of the Game's ELF and calculate CRC32.
     dl_iterate_phdr(callback, NULL);
 
@@ -290,6 +299,7 @@ void __attribute__((constructor)) hook_init()
 
 void __attribute__((destructor)) hook_shutdown()
 {
+    aerVdbBridgeShutdown();
     aerActivationDiagnosticsShutdown();
     aerNativeActivationShutdown();
     aerDriveboardRecorderShutdown();

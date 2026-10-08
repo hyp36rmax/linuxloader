@@ -105,6 +105,9 @@ int main(int argc, char *argv[], char *envp[])
         strcpy(elfPath, gameELF);
     }
 
+    g_absoluteElfPath = std::filesystem::absolute(elfPath).string();
+    SetEnvironmentVariableA("AER_GAME_EXECUTABLE_PATH", g_absoluteElfPath.c_str());
+
     ElfLoader::PreReserveAddressSpace(elfPath);
 
     log_info("Initializing library search paths...\n");

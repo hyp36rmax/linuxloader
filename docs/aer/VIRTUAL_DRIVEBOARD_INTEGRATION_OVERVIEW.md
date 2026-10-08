@@ -75,3 +75,13 @@ Passing the check still does not start the steering system. The new module is co
 The audit also narrowed the future bridge surface. The verified game imports the ordinary open/read/write/fwrite/select/ioctl/close family. LinuxLoader already has optional writev and descriptor-duplication support, while the original executable supplies no evidence that openat, dup2, or dup3 needs a new interception path. I am leaving those unsupported paths alone until original evidence says otherwise.
 
 One uncertainty remains intentionally visible: the loader's existing `SetOutFactor()` modification changes an original steering-output gate. It is not an initializer bypass, but its effect on future native-output fidelity needs separate evidence. The next milestone should resolve patch and observer ordering and prove the bridge ABI without yet activating native initialization.
+
+## The bridge is connected, but the game is still not activated
+
+AER-02H.3 connects the isolated board to LinuxLoader's existing file-operation boundary. I kept one ownership path: the same open, read, write, readiness, duplication, and close interception already used by the loader now recognizes a bounded research descriptor only after the complete revision and configuration check succeeds.
+
+The important safety behavior is what happens when anything is wrong. An explicit research request that fails verification cannot continue into the configured physical serial path. It receives no half-created descriptor and does not silently turn on the normal emulator. With research mode absent, ordinary LinuxLoader behavior remains unchanged.
+
+The adapter also behaves like a real byte endpoint rather than the older always-ready shortcut. Empty response queues are not readable, `FIONREAD` reports the actual byte count, scattered writes keep their order, partial frames stay bounded, and duplicated descriptors share one board state until the final alias closes.
+
+This still does not start Sega's steering system. The adapter invents no board reply, changes no cabinet patch, forces no driver/check state, installs no game callback, and has no route to a motor or host FFB API. Automated Windows and Linux builds now exercise the same research boundary, but successful compilation will establish platform compatibility only—not arcade hardware authenticity or native FFB operation.

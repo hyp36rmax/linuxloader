@@ -8,6 +8,7 @@
 #include <dirent.h>
 #include <stdio.h>
 #include <sys/stat.h>
+struct iovec;
 typedef enum
 {
     NO_DEVICE = 0,
@@ -49,6 +50,9 @@ int sharedClose(int fd);
 char *sharedFgets(char *str, int n, FILE *stream);
 ssize_t sharedRead(int fd, void *buf, size_t count);
 size_t sharedFread(void *buf, size_t size, size_t count, FILE *stream);
+size_t sharedFwrite(const void *buf, size_t size, size_t count, FILE *stream);
+ssize_t sharedWritev(int fd, const struct iovec *iov, int iovcnt);
+int sharedDup(int fd);
 long int sharedFtell(FILE *stream);
 int sharedFseek(FILE *stream, long int offset, int whence);
 void sharedRewind(FILE *stream);

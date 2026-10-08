@@ -11,10 +11,12 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstring>
+#include <cerrno>
 #include "../config/config.h"
 #include "../hardware/lindbergh/driveBoard.h"
 #include "../research/aerActivationDiagnostics.h"
 #include "../research/aerDriveboardRecorder.h"
+#include "../research/aerVirtualDriveboardBridge.h"
 
 extern std::string g_absoluteElfPath;
 
@@ -115,6 +117,8 @@ namespace FileSystemBridge
     {
         log_trace("Intercepted fwrite: %p %zu %zu %p", ptr, size, count, stream);
         int fd = _fileno(stream);
+        if (aerVdbBridgeContains(fd))
+            return aerVdbBridgeFwrite(fd, ptr, size, count);
         int endpoint = sharedAerDriveboardEndpointForFd(fd);
         size_t requested = (size != 0 && count > SIZE_MAX / size) ? SIZE_MAX : size * count;
         if (endpoint != AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
@@ -200,6 +204,14 @@ namespace FileSystemBridge
     size_t bridgeWritev(int fd, const struct iovec *iov, int iovcnt)
     {
         log_trace("Intercepted writev");
+        if (aerVdbBridgeContains(fd))
+        {
+            const void *buffers[AER_VDB_MAX_FRAME];
+            size_t sizes[AER_VDB_MAX_FRAME];
+            if (iovcnt < 0 || iovcnt > AER_VDB_MAX_FRAME) { errno = EINVAL; return (size_t)-1; }
+            for (int i = 0; i < iovcnt; ++i) { buffers[i] = iov[i].iov_base; sizes[i] = iov[i].iov_len; }
+            return (size_t)aerVdbBridgeWritev(fd, buffers, sizes, (size_t)iovcnt);
+        }
         int endpoint = sharedAerDriveboardEndpointForFd(fd);
         size_t diagnosticRequested = 0;
         for (int i = 0; i < iovcnt; ++i)
@@ -277,6 +289,11 @@ namespace FileSystemBridge
     {
         log_trace("Intercepted dup: %d", fd);
         int destination = _dup(fd);
+        if (destination >= 0 && aerVdbBridgeContains(fd))
+        {
+            if (!aerVdbBridgeDup(fd, destination)) { _close(destination); errno = EMFILE; return -1; }
+            return destination;
+        }
         int endpoint = sharedAerDriveboardEndpointForFd(fd);
         if (destination >= 0 && endpoint != AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
         {

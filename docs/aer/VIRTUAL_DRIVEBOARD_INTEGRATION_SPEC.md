@@ -147,6 +147,38 @@ The focused synthetic-ELF suite verifies default-off, explicit eligibility, wron
 
 Existing AER recorder, activation-diagnostic, native-activation, offline-activation, virtual-model, and virtual-infrastructure suites remain the regression authority. No runtime build file includes this bootstrap.
 
+## AER-02H.3 filesystem bridge adapter
+
+The research adapter now uses LinuxLoader's existing shared filesystem interception layer. It does not introduce another global hook stack. `sharedOpen()` owns SERIAL0 selection; `sharedRead()`, `sharedWrite()`, `sharedIoctl()`, `sharedSelect()`, and `sharedClose()` recognize only descriptors registered by the bounded AER registry. Linux `writev`, `fwrite`, and `dup` wrappers and their Windows C++ bridge equivalents call the same adapter operations.
+
+Startup evaluates `AER_VIRTUAL_DRIVEBOARD=1` once through the AER-02H.2 bootstrap. Windows supplies the absolute loaded-ELF path; Linux resolves `/proc/self/exe`. A rejected explicit request makes SERIAL0 open fail with no physical fallback. With the setting absent, the added branches are dormant and the existing serial/emulator behavior remains authoritative.
+
+An eligible SERIAL0 open creates one loader-owned backing descriptor and attaches one transport. Aliases share its queues and lifecycle. Closing one alias preserves the transport; final close clears it. The registry remains bounded and rejects reuse/overflow. SERIAL1 is unchanged.
+
+### API coverage and platform boundary
+
+| Operation | Integrated behavior |
+| --- | --- |
+| `open` / Linux `openat` | SERIAL0 enters the virtual path only after complete eligibility; rejected research requests cannot fall through to physical serial. |
+| `read` | Copies only queued bytes; empty reads return `EAGAIN`; closed aliases return `EBADF`. |
+| `write` | Uses bounded partial-frame assembly and reports accepted bytes exactly. Failed frames do not queue replies. |
+| `writev` | Flattens vectors as one ordered logical stream through the same atomic transport operation. |
+| `fwrite` | Returns completed elements, not byte counts. |
+| `select` | Reports virtual read readiness only with queued bytes and write readiness only while the bounded queue can accept work. |
+| `ioctl(FIONREAD)` | Returns the exact queued-byte count through an `int`; other virtual requests fail explicitly. |
+| `dup` | Adds a bounded alias only after OS duplication succeeds. |
+| `close` | Removes one alias and shuts down on final close. |
+
+The verified Jennifer import table does not reach `dup2` or `dup3`; neither is added. Linux's existing `openat` wrapper reaches `sharedOpen` for serial paths. Windows ELF imports are mapped through `filesystemBridge.cpp`, whose Linux ABI fd sets remain distinct from Winsock descriptors.
+
+### Isolation and present limitation
+
+The adapter links only to the bootstrap and isolated transport. Static symbol checks prohibit serial passthrough helpers, SDL/evdev FFB, motion output, cabinet callbacks, native state functions, and hardcom ownership. Failure after routing faults the research transport and never switches to another endpoint.
+
+Unknown response bytes remain test-only synthetic assumptions. The adapter does not generate firmware responses on its own. Consequently it cannot advance native initialization, and the existing cabinet/drive-board patches remain unchanged. This milestone proves the communication ABI and isolation boundary, not functioning native FFB.
+
+The focused suite covers default-off and rejected bootstrap states, attachment, shared aliases, ordered partial writes, `writev`, `fwrite`, empty and partial reads, queued-byte reporting, readiness, queue overflow, timeout, disconnect, repeated shutdown, final-close cleanup, and prohibited link dependencies. Both platform workflows run the bootstrap and bridge suites before their authoritative 32-bit builds.
+
 ## Virtual transport contract
 
 ### Lifecycle

@@ -20,6 +20,7 @@
 #include "research/aerDriveboardRecorder.h"
 #include "research/aerActivationDiagnostics.h"
 #include "research/aerNativeActivation.h"
+#include "research/aerVirtualDriveboardBridge.h"
 
 #if defined(__linux__)
 #include "input/evdevInput.h"
@@ -56,6 +57,23 @@ void initMain(char *configPath, char *controlsPath)
     gGrp = getConfig()->gameGroup;
     gWidth = getConfig()->width;
     gHeight = getConfig()->height;
+
+    const char *aerVirtualRequest = getenv("AER_VIRTUAL_DRIVEBOARD");
+    const char *aerExecutablePath = getenv("AER_GAME_EXECUTABLE_PATH");
+    const char *aerBoardCount = getenv("AER_VIRTUAL_DRIVEBOARD_COUNT");
+    const char *aerPhysicalPassthrough = getenv("AER_VIRTUAL_DRIVEBOARD_PHYSICAL_PASSTHROUGH");
+    AerVdbBridgeRequest aerVirtualBridge = {
+        .requested = aerVirtualRequest && strcmp(aerVirtualRequest, "1") == 0,
+        .revision = getDvpName(),
+        .crc32 = getConfig()->crc32,
+        .executablePath = aerExecutablePath,
+        .skipCabinetCheck = getConfig()->skipOutrunCabinetCheck,
+        .emulateDriveboard = getConfig()->emulateDriveboard,
+        .physicalSerialRequested = aerPhysicalPassthrough && strcmp(aerPhysicalPassthrough, "1") == 0,
+        .boardCount = aerBoardCount ? atoi(aerBoardCount) : 1,
+        .capabilities = AER_VDB_REQUIRED_BRIDGE_CAPABILITIES | AER_VDB_BRIDGE_WRITEV | AER_VDB_BRIDGE_DUP,
+    };
+    aerVdbBridgeInitialize(&aerVirtualBridge);
 
     AerDriveboardRecorderMetadata aerMetadata = {
         .gameRevision = getDvpName(),
