@@ -1,3 +1,4 @@
+#include "loader/config/experienceRuntime.h"
 #if defined(_WIN32) || defined(__MINGW32__)
 #include "../redirections/filesystemShared.h"
 #include "filesystemBridge.hpp"
@@ -241,6 +242,11 @@ namespace FileSystemBridge
 
     int bridgeAccess(const char *pathname, int mode)
     {
+
+        char isolated[1024];
+        int mapped = experienceMapPath(pathname, isolated, sizeof(isolated));
+        if (mapped < 0) return -1;
+        if (mapped > 0) pathname = isolated;
         if (pathname && strstr(pathname, "/dev/") != NULL)
         {
             return 0; // Success
@@ -405,6 +411,12 @@ extern "C"
 
     int bridgeUnlink(const char *pathname)
     {
+
+        char isolated[1024];
+        int mapped = experienceMapPath(pathname, isolated, sizeof(isolated));
+        if (mapped < 0) return -1;
+        if (mapped > 0) pathname = isolated;
+        if (!experienceWritablePathAllowed(pathname)) { errno = EACCES; return -1; }
         if (strncmp(pathname, "/tmp", 4) == 0)
         {
             pathname += 1;
@@ -419,6 +431,7 @@ extern "C"
         char winNew[MAX_PATH];
         ConvertPath(winOld, oldpath, MAX_PATH);
         ConvertPath(winNew, newpath, MAX_PATH);
+        if (!experienceWritablePathAllowed(winOld) || !experienceWritablePathAllowed(winNew)) { errno = EACCES; return -1; }
         return rename(winOld, winNew);
     }
 
@@ -501,6 +514,11 @@ extern "C"
 
     static int myStatImpl(const char *path, void *buf, bool use_stat64)
     {
+
+        char isolated[1024];
+        int mapped = experienceMapPath(path, isolated, sizeof(isolated));
+        if (mapped < 0) return -1;
+        if (mapped > 0) path = isolated;
         if (strncmp(path, "/tmp", 4) == 0)
             path += 1;
 

@@ -1,0 +1,48 @@
+name: Experience runtime integration
+on:
+  push:
+    branches: [integration/experience-runtime]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  runtime:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e
+        with:
+          msystem: MINGW32
+          update: false
+          install: >-
+            mingw-w64-i686-gcc
+            mingw-w64-i686-cmake
+            mingw-w64-i686-ninja
+      - name: Record toolchain and dependency identity
+        run: |
+          gcc --version
+          cmake --version
+          pacman -Q mingw-w64-i686-gcc mingw-w64-i686-cmake mingw-w64-i686-ninja
+          sha256sum libs/win32/*.a libs/win32/ll-deps/*.*
+      - name: Build external x86 runtime
+        run: |
+          cmake -S . -B build-runtime -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+          cmake --build build-runtime --parallel 2
+          ./build-runtime/linuxloader.exe --experience-capabilities
+      - name: Run asset-free production persistence tests
+        run: |
+          cmake -S tests/experience -B build-experience -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+          cmake --build build-experience --parallel 2
+          ctest --test-dir build-experience --output-on-failure --verbose
+      # No runtime binaries, dependencies, arcade assets or profiles are uploaded.

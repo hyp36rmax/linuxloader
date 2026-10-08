@@ -248,12 +248,9 @@ int eepromSettingsInit( FILE *eeprom)
 {
     buildCrc32Table();
 
-    eeprom = fopen("eeprom.bin", "r+b");
-    if (eeprom == NULL)
-    {
-        printf("eeprom.bin cannot be opened, let's create a new one.\n");
-        eeprom = fopen("eeprom.bin", "w+b");
-    }
+    // The caller already opened the configured EEPROM. Borrow that stream;
+    // reopening a relative eeprom.bin here loses isolation and leaks a handle.
+    if (eeprom == NULL) return 1;
     fseek(eeprom, 0, SEEK_END);
     int size = ftell(eeprom);
     fseek(eeprom, 0, SEEK_SET);

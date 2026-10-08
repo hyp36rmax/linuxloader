@@ -4,6 +4,18 @@ project(linuxloader LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    OUTPUT_VARIABLE EXPERIENCE_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE)
+if(NOT EXPERIENCE_REVISION MATCHES "^[0-9a-f]+$")
+    set(EXPERIENCE_REVISION "unversioned")
+endif()
+add_library(experience_helpers STATIC src/loader/config/experienceRuntime.cpp)
+set_target_properties(experience_helpers PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions(experience_helpers PRIVATE EXPERIENCE_BUILD_REVISION="${EXPERIENCE_REVISION}")
+if(NOT WIN32 AND NOT MINGW)
+    target_compile_options(experience_helpers PRIVATE -m32)
+endif()
+
 # Include directories
 include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
@@ -54,7 +66,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT MINGW AND NOT CMAKE_C_COMPILER MATC
         src/loader/config/configIni.c)
 
     set_target_properties(linuxloader_exe PROPERTIES LINK_FLAGS "-m32")
-    target_link_libraries(linuxloader_exe PRIVATE m SDL3)
+    target_link_libraries(linuxloader_exe PRIVATE m SDL3 experience_helpers)
     set_target_properties(linuxloader_exe PROPERTIES OUTPUT_NAME "linuxloader")
     target_compile_options(linuxloader_exe PRIVATE ${LINUXLOADER_EXE_C_FLAGS})
 
@@ -99,7 +111,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT MINGW AND NOT CMAKE_C_COMPILER MATC
 
     add_library(linuxloader SHARED ${LINUX_LOADER_OBJS})
     set_target_properties(linuxloader PROPERTIES PREFIX "")
-    target_link_libraries(linuxloader ${LINUX_LOADER_SO_LINKER_FLAGS} xdiff minhook dl)
+    target_link_libraries(linuxloader ${LINUX_LOADER_SO_LINKER_FLAGS} xdiff minhook dl experience_helpers)
     target_compile_options(linuxloader PRIVATE ${LINUX_LOADER_SO_C_FLAGS})
 
 elseif(WIN32 OR MINGW OR CMAKE_C_COMPILER MATCHES "mingw")
@@ -163,7 +175,7 @@ elseif(WIN32 OR MINGW OR CMAKE_C_COMPILER MATCHES "mingw")
     # Link dependencies
     target_link_directories(${PROJECT_NAME} PRIVATE "libs/win32")
     target_link_libraries(${PROJECT_NAME}
-        minhook xdiff -Wl,-Bstatic SDL3 SDL3_ttf SDL3_image FAudio freetype harfbuzz winpthread stdc++ gcc gcc_eh -Wl,-Bdynamic gdi32 winmm ole32 ws2_32 psapi usp10 rpcrt4 setupapi version imm32 hid delayimp
+        experience_helpers minhook xdiff -Wl,-Bstatic SDL3 SDL3_ttf SDL3_image FAudio freetype harfbuzz winpthread stdc++ gcc gcc_eh -Wl,-Bdynamic gdi32 winmm ole32 ws2_32 psapi usp10 rpcrt4 setupapi version imm32 hid delayimp
     )
 
 else()
