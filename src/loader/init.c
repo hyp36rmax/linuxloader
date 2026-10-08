@@ -40,6 +40,14 @@ extern char *configFolder;
 Controllers controllers = {0};
 #endif
 
+static void aerVirtualSteeringSensorWrite(int board, int position, void *context)
+{
+    (void)context;
+    int center = getJVSIO()->capabilities.analogueInBits == 8 ? 0x80 : 0x200;
+    int channel = board == 0 ? ANALOGUE_1 : ANALOGUE_5;
+    setAnalogue((JVSInput)channel, center + position);
+}
+
 void initMain(char *configPath, char *controlsPath)
 {
 #ifdef __linux__
@@ -72,8 +80,17 @@ void initMain(char *configPath, char *controlsPath)
         .physicalSerialRequested = aerPhysicalPassthrough && strcmp(aerPhysicalPassthrough, "1") == 0,
         .boardCount = aerBoardCount ? atoi(aerBoardCount) : 1,
         .capabilities = AER_VDB_REQUIRED_BRIDGE_CAPABILITIES | AER_VDB_BRIDGE_WRITEV | AER_VDB_BRIDGE_DUP,
+        .sensorWriter = aerVirtualSteeringSensorWrite,
+        .sensorWriterContext = NULL,
     };
-    aerVdbBridgeInitialize(&aerVirtualBridge);
+    AerVdbBootstrapResult aerVirtualResult = aerVdbBridgeInitialize(&aerVirtualBridge);
+    if (aerVirtualBridge.requested)
+    {
+        if (aerVirtualResult == AER_VDB_BOOTSTRAP_ELIGIBLE)
+            log_info("AER DEV5 virtual drive board: eligible; native ownership preserved; physical output isolated\n");
+        else
+            log_error("AER DEV5 virtual drive board: rejected (%d); no physical fallback\n", aerVirtualResult);
+    }
 
     AerDriveboardRecorderMetadata aerMetadata = {
         .gameRevision = getDvpName(),

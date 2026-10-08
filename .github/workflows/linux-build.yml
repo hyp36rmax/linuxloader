@@ -45,6 +45,10 @@ jobs:
         ./tests/run_aer_activation_diagnostics_tests.sh
         ./tests/run_aer_native_activation_tests.sh
         ./tests/run_aer_virtual_driveboard_bootstrap_tests.sh
+        ./tests/run_aer_virtual_driveboard_infrastructure_tests.sh
+        ./tests/run_aer_virtual_driveboard_activation_tests.sh
+        ./tests/run_aer_virtual_driveboard_model_tests.sh
+        ./tests/run_aer_offline_activation_model_tests.sh
         ./tests/run_aer_virtual_driveboard_bridge_tests.sh
         scripts/linux/make-linux.sh
         scripts/appimage/make-appimage.sh

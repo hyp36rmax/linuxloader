@@ -78,23 +78,80 @@ AerVdbConfigResult aerVdbValidateConfig(const AerVdbConfig *c)
 
 static void fault(AerVdbTransport *t) { t->lifecycle=AER_VDB_FAULT;t->requestCount=t->responseCount=t->partialCount=0; }
 void aerVdbTransportInit(AerVdbTransport *t,int boards) { memset(t,0,sizeof(*t));t->boardCount=boards;t->lifecycle=(boards>=1&&boards<=2)?AER_VDB_IDLE:AER_VDB_FAULT;t->sensorStep=10; }
+void aerVdbTransportEnableNativePolicy(AerVdbTransport *t,AerVdbSensorWriter writer,void *context)
+{
+    if(!t)return;
+    t->nativeResponsePolicy=1;
+    t->sensorWriter=writer;
+    t->sensorWriterContext=context;
+}
 int aerVdbTransportStart(AerVdbTransport *t) { if(!t||t->lifecycle!=AER_VDB_IDLE)return 0;t->lifecycle=AER_VDB_INITIALIZING;t->timeoutTicks=0;return 1; }
 static size_t frameSize(const AerVdbTransport *t){return t->boardCount==2?7u:4u;}
-static int validFrame(const uint8_t *p,size_t n) { size_t i;uint8_t x=0;if(n!=4&&n!=7)return 0;for(i=0;i<n-1;i++)x^=(uint8_t)(p[i]&((i==0||i==4)?0x7f:0xff));return x==p[n-1];}
+static int validFrame(const uint8_t *p,size_t n) { size_t i;uint8_t x=0;if(n!=4&&n!=7)return 0;for(i=0;i<n-1;i++)x^=(uint8_t)(p[i]&((i==0||i==3)?0x7f:0xff));return x==p[n-1];}
+static int queueResponse(AerVdbTransport *t,uint8_t response)
+{
+    size_t cap=AER_VDB_QUEUE_CAPACITY*AER_VDB_MAX_BOARDS;
+    if(t->responseCount>=cap){fault(t);errno=ENOBUFS;return 0;}
+    t->responses[(t->responseHead+t->responseCount)%cap]=response;
+    t->responseCount++;
+    return 1;
+}
+static int applyNativeRequest(AerVdbTransport *t,int board,const uint8_t *request)
+{
+    uint8_t command=(uint8_t)(request[0]&0x7f),response=0x00;
+    switch(command){
+        case 0x7f:
+            t->lifecycle=AER_VDB_INITIALIZING;
+            break;
+        case 0x01:
+            t->lifecycle=AER_VDB_INITIALIZING;
+            if(request[1]==0x30&&request[2]==0x7f)response=0x11;
+            break;
+        case 0x7c: case 0x7d:
+            t->lifecycle=AER_VDB_INITIALIZING;
+            break;
+        case 0x7a: case 0x03: case 0x06: case 0x08:
+            t->lifecycle=AER_VDB_CONFIGURING;
+            break;
+        case 0x00: case 0x04: case 0x70:
+            t->lifecycle=AER_VDB_CALIBRATING;
+            if(command==0x04&&t->sensorWriter){
+                t->sensorPosition=t->sensorCenter;
+                t->sensorTarget=t->sensorCenter;
+                t->sensorWriter(board,t->sensorCenter,t->sensorWriterContext);
+            }
+            break;
+        case 0x1d: case 0x1e:
+            t->lifecycle=AER_VDB_READY;
+            break;
+        default:
+            if(t->lifecycle!=AER_VDB_READY){fault(t);errno=EPROTO;return 0;}
+            break;
+    }
+    t->nativeCommandFrames++;
+    return queueResponse(t,response);
+}
+static int processNativeFrame(AerVdbTransport *t,const AerVdbFrame *frame)
+{
+    int board;
+    for(board=0;board<t->boardCount;board++)
+        if(!applyNativeRequest(t,board,frame->bytes+(size_t)board*3u))return 0;
+    return 1;
+}
 ssize_t aerVdbTransportWrite(AerVdbTransport *t,const void *data,size_t size)
 {
     const uint8_t *p=data;size_t i,n;
     if(!t||(!data&&size)){errno=EINVAL;return -1;} if(t->lifecycle==AER_VDB_FAULT||t->lifecycle==AER_VDB_SHUTDOWN||t->disconnected){errno=EIO;return -1;}
     n=frameSize(t); if(t->requestCount>=AER_VDB_QUEUE_CAPACITY||t->partialCount+size>n){fault(t);errno=ENOBUFS;return -1;}
     for(i=0;i<size;i++)t->partial[t->partialCount++]=p[i];
-    if(t->partialCount==n){AerVdbFrame *f;if(!validFrame(t->partial,n)){fault(t);errno=EPROTO;return -1;}f=&t->requests[(t->requestHead+t->requestCount)%AER_VDB_QUEUE_CAPACITY];memcpy(f->bytes,t->partial,n);f->size=n;t->requestCount++;t->partialCount=0;}
+    if(t->partialCount==n){AerVdbFrame *f;if(!validFrame(t->partial,n)){fault(t);errno=EPROTO;return -1;}f=&t->requests[(t->requestHead+t->requestCount)%AER_VDB_QUEUE_CAPACITY];memcpy(f->bytes,t->partial,n);f->size=n;t->requestCount++;t->partialCount=0;t->acceptedFrames++;t->timeoutTicks=0;if(t->nativeResponsePolicy){if(!processNativeFrame(t,f))return -1;t->requestHead=(t->requestHead+1)%AER_VDB_QUEUE_CAPACITY;t->requestCount--;}}
     return (ssize_t)size;
 }
-ssize_t aerVdbTransportWritev(AerVdbTransport *t,const void *const *data,const size_t *sizes,size_t count){size_t i,total=0;AerVdbTransport copy;if(!t||(!data&&count)||(!sizes&&count)){errno=EINVAL;return -1;}copy=*t;for(i=0;i<count;i++){ssize_t n=aerVdbTransportWrite(&copy,data[i],sizes[i]);if(n<0)return -1;total+=(size_t)n;}*t=copy;return (ssize_t)total;}
+ssize_t aerVdbTransportWritev(AerVdbTransport *t,const void *const *data,const size_t *sizes,size_t count){size_t i,total=0;AerVdbTransport copy;if(!t||(!data&&count)||(!sizes&&count)){errno=EINVAL;return -1;}for(i=0;i<count;i++){if(!data[i]&&sizes[i]){errno=EINVAL;return -1;}if(SIZE_MAX-total<sizes[i]||total+sizes[i]>frameSize(t)-t->partialCount){errno=ENOBUFS;return -1;}total+=sizes[i];}copy=*t;for(i=0;i<count;i++)if(aerVdbTransportWrite(&copy,data[i],sizes[i])<0)return -1;*t=copy;return (ssize_t)total;}
 size_t aerVdbTransportReadable(const AerVdbTransport *t){return t?t->responseCount:0;}
-ssize_t aerVdbTransportRead(AerVdbTransport *t,void *data,size_t size){size_t i,n;if(!t||(!data&&size)){errno=EINVAL;return -1;}if(t->lifecycle==AER_VDB_FAULT||t->lifecycle==AER_VDB_SHUTDOWN){errno=EIO;return -1;}if(!t->responseCount){errno=EAGAIN;return -1;}n=size<t->responseCount?size:t->responseCount;for(i=0;i<n;i++)((uint8_t*)data)[i]=t->responses[(t->responseHead+i)%(AER_VDB_QUEUE_CAPACITY*AER_VDB_MAX_BOARDS)];t->responseHead=(t->responseHead+n)%(AER_VDB_QUEUE_CAPACITY*AER_VDB_MAX_BOARDS);t->responseCount-=n;return(ssize_t)n;}
+ssize_t aerVdbTransportRead(AerVdbTransport *t,void *data,size_t size){size_t i,n;if(!t||(!data&&size)){errno=EINVAL;return -1;}if(t->lifecycle==AER_VDB_FAULT||t->lifecycle==AER_VDB_SHUTDOWN){errno=EIO;return -1;}if(!t->responseCount){errno=EAGAIN;return -1;}n=size<t->responseCount?size:t->responseCount;for(i=0;i<n;i++)((uint8_t*)data)[i]=t->responses[(t->responseHead+i)%(AER_VDB_QUEUE_CAPACITY*AER_VDB_MAX_BOARDS)];t->responseHead=(t->responseHead+n)%(AER_VDB_QUEUE_CAPACITY*AER_VDB_MAX_BOARDS);t->responseCount-=n;t->timeoutTicks=0;return(ssize_t)n;}
 size_t aerVdbTransportFwrite(AerVdbTransport *t,const void *data,size_t es,size_t ec){size_t bytes;if(!es||!ec)return 0;if(ec>SIZE_MAX/es){errno=EOVERFLOW;return 0;}bytes=es*ec;ssize_t n=aerVdbTransportWrite(t,data,bytes);return n<0?0:(size_t)n/es;}
-int aerVdbTransportQueueAssumedResponse(AerVdbTransport *t,uint8_t r){size_t cap=AER_VDB_QUEUE_CAPACITY*AER_VDB_MAX_BOARDS;if(!t||t->responseCount>=cap){if(t)fault(t);return 0;}t->responses[(t->responseHead+t->responseCount)%cap]=r;t->responseCount++;return 1;}
+int aerVdbTransportQueueAssumedResponse(AerVdbTransport *t,uint8_t r){if(!t)return 0;return queueResponse(t,r);}
 int aerVdbTransportTick(AerVdbTransport *t){if(!t||t->lifecycle==AER_VDB_FAULT||t->lifecycle==AER_VDB_SHUTDOWN)return 0;if(++t->timeoutTicks>900){fault(t);return 0;}return 1;}
 int aerVdbSensorRequest(AerVdbTransport *t,int direction){if(!t||t->lifecycle!=AER_VDB_CALIBRATING||(direction!=-1&&direction!=1)){if(t)fault(t);return 0;}t->sensorTarget=t->sensorPosition+direction*10;if(t->sensorTarget>96)t->sensorTarget=96;if(t->sensorTarget< -96)t->sensorTarget=-96;return 1;}
 int aerVdbSensorTick(AerVdbTransport *t){if(!t||t->lifecycle!=AER_VDB_CALIBRATING)return 0;if(++t->calibrationTicks>900){fault(t);return 0;}if(t->sensorPosition<t->sensorTarget)t->sensorPosition+=t->sensorStep;else if(t->sensorPosition>t->sensorTarget)t->sensorPosition-=t->sensorStep;if(t->sensorPosition>96)t->sensorPosition=96;if(t->sensorPosition< -96)t->sensorPosition=-96;return t->sensorPosition==t->sensorTarget;}

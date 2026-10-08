@@ -89,6 +89,8 @@ typedef struct AerVdbFrame
     size_t size;
 } AerVdbFrame;
 
+typedef void (*AerVdbSensorWriter)(int board, int position, void *context);
+
 typedef struct AerVdbTransport
 {
     AerVdbLifecycle lifecycle;
@@ -107,6 +109,11 @@ typedef struct AerVdbTransport
     int sensorStep;
     unsigned calibrationTicks;
     int physicalOutputAccessed;
+    int nativeResponsePolicy;
+    AerVdbSensorWriter sensorWriter;
+    void *sensorWriterContext;
+    uint64_t acceptedFrames;
+    uint64_t nativeCommandFrames;
 } AerVdbTransport;
 
 typedef struct AerVdbDescriptorRegistry
@@ -122,6 +129,9 @@ AerVdbVerifyResult aerVdbVerifyTarget(const AerVdbTarget *target);
 AerVdbConfigResult aerVdbValidateConfig(const AerVdbConfig *config);
 
 void aerVdbTransportInit(AerVdbTransport *transport, int boardCount);
+void aerVdbTransportEnableNativePolicy(AerVdbTransport *transport,
+                                       AerVdbSensorWriter sensorWriter,
+                                       void *sensorWriterContext);
 int aerVdbTransportStart(AerVdbTransport *transport);
 ssize_t aerVdbTransportWrite(AerVdbTransport *transport, const void *data, size_t size);
 ssize_t aerVdbTransportWritev(AerVdbTransport *transport, const void *const *data,

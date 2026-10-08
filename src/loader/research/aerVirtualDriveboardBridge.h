@@ -21,6 +21,8 @@ typedef struct AerVdbBridgeRequest
     int physicalSerialRequested;
     int boardCount;
     uint32_t capabilities;
+    AerVdbSensorWriter sensorWriter;
+    void *sensorWriterContext;
 #ifdef AER_VDB_TESTING
     const char *testExpectedSha256;
 #endif
@@ -42,6 +44,10 @@ int aerVdbBridgeIoctl(int fd, unsigned long request, void *argument);
 int aerVdbBridgeReadable(int fd);
 int aerVdbBridgeWritable(int fd);
 int aerVdbBridgeTick(void);
+AerVdbLifecycle aerVdbBridgeLifecycle(void);
+uint64_t aerVdbBridgeAcceptedFrames(void);
+uint64_t aerVdbBridgeNativeCommandFrames(void);
+int aerVdbBridgePhysicalOutputAccessed(void);
 void aerVdbBridgeDisconnect(void);
 void aerVdbBridgeShutdown(void);
 
