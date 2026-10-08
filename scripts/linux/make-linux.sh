@@ -19,6 +19,15 @@ mv libposixtime.so.2.4 ll-deps/
 mv libkswapapi.so ll-deps/
 mv libsegaapi.so ll-deps/
 mv linuxloader.so ll-deps/
+grep -aFq 'AER_DRIVEBOARD_ACTIVATION_V1' ll-deps/linuxloader.so
+cat > BUILD_INFO.txt <<EOF
+Full commit SHA: ${GITHUB_SHA:-UNKNOWN}
+CI run ID: ${GITHUB_RUN_ID:-LOCAL}
+Platform: Linux 32-bit
+Research milestone: AER-01I
+Recorder schema: AER_DRIVEBOARD_RAW_V1
+Diagnostic version: AER_DRIVEBOARD_ACTIVATION_V1
+EOF
 cd ..
 tar -czvf linuxloader-linux.tar.gz -C ./build-linux .
 cd build-linux

@@ -74,11 +74,17 @@ void setVariable16(size_t address, uint16_t value)
 
 void patchMemoryFromString(size_t address, char *value)
 {
+    if (patchMemoryFromStringResult(address, value) == -1)
+        exit(EXIT_FAILURE);
+}
+
+int patchMemoryFromStringResult(size_t address, const char *value)
+{
     size_t size = strlen((void *)value);
     if (size % 2 != 0)
     {
         log_error("Patch sting len should be even.\n");
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
 #ifdef __linux__
@@ -93,7 +99,7 @@ void patchMemoryFromString(size_t address, char *value)
 #endif
     {
         log_error("Error: Cannot unprotect memory region to change variable\n");
-        return;
+        return -2;
     }
 
     size_t bufSize = size / 2;
@@ -101,7 +107,7 @@ void patchMemoryFromString(size_t address, char *value)
     if (!buf)
     {
         log_error("Failed to allocate %zu bytes for patch buffer\n", bufSize);
-        return;
+        return -3;
     }
     char tmpchr[3];
     char *p = value;
@@ -119,6 +125,7 @@ void patchMemoryFromString(size_t address, char *value)
 #ifdef _WIN32
     VirtualProtect((void *)address, len / 2, oldProtect, &oldProtect);
 #endif
+    return 0;
 }
 
 void detourFunction(size_t address, void *function)

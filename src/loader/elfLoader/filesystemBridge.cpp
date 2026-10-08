@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstring>
 #include "../config/config.h"
+#include "../hardware/lindbergh/driveBoard.h"
 #include "../research/aerDriveboardRecorder.h"
 
 extern std::string g_absoluteElfPath;
@@ -115,12 +116,16 @@ namespace FileSystemBridge
         int fd = _fileno(stream);
         int endpoint = sharedAerDriveboardEndpointForFd(fd);
         size_t requested = (size != 0 && count > SIZE_MAX / size) ? SIZE_MAX : size * count;
+        if (endpoint != AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
+            driveboardObserveWriteContext(aerDriveboardRecorderMonotonicNs(), endpoint,
+                                          AER_DRIVEBOARD_EVENT_FWRITE, requested);
         if (!aerDriveboardRecorderEnabled() || endpoint == AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
             return fwrite(ptr, size, count, stream);
         AerDriveboardPendingWrite pending;
         aerDriveboardRecorderPrepareWritePath(&pending, AER_DRIVEBOARD_EVENT_FWRITE,
                                               (AerDriveboardEndpoint)endpoint, fd, ptr, requested);
         size_t result = fwrite(ptr, size, count, stream);
+        aerActivationDiagnosticsFirstWriteResult((int64_t)result);
         aerDriveboardRecorderCompleteWrite(&pending, (ssize_t)result);
         return result;
     }
@@ -195,6 +200,12 @@ namespace FileSystemBridge
     {
         log_trace("Intercepted writev");
         int endpoint = sharedAerDriveboardEndpointForFd(fd);
+        size_t diagnosticRequested = 0;
+        for (int i = 0; i < iovcnt; ++i)
+            diagnosticRequested = SIZE_MAX - diagnosticRequested < iov[i].iov_len ? SIZE_MAX : diagnosticRequested + iov[i].iov_len;
+        if (endpoint != AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
+            driveboardObserveWriteContext(aerDriveboardRecorderMonotonicNs(), endpoint,
+                                          AER_DRIVEBOARD_EVENT_WRITEV, diagnosticRequested);
         AerDriveboardPendingWrite pending;
         memset(&pending, 0, sizeof(pending));
         if (aerDriveboardRecorderEnabled() && endpoint != AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
@@ -234,6 +245,7 @@ namespace FileSystemBridge
             if ((size_t)written < iov[i].iov_len)
                 break;
         }
+        aerActivationDiagnosticsFirstWriteResult((int64_t)total_written);
         aerDriveboardRecorderCompleteWrite(&pending, (ssize_t)total_written);
         return total_written;
     }

@@ -7,6 +7,8 @@
 #include "driveBoard.h"
 #include "forceFeedback.h"
 #include "jvs.h"
+#include "../../research/aerActivationDiagnostics.h"
+#include "../../research/aerDriveboardRecorder.h"
 
 #define DRIVEBOARD_READY 0x00
 #define DRIVEBOARD_NOT_INIT 0x11
@@ -33,6 +35,7 @@ int enableRead = 0;
 
 ssize_t driveboardRead(int fd, void *buf, size_t count)
 {
+    int readableBefore = enableRead;
     memset(buffer, '\0', 64);
     if (enableRead)
     {
@@ -40,6 +43,7 @@ ssize_t driveboardRead(int fd, void *buf, size_t count)
         mybuf[0] = response;
         enableRead = 0;
     }
+    aerActivationDiagnosticsRead(readableBefore, readableBefore, response);
     return 1;
 }
 
@@ -85,11 +89,19 @@ ssize_t driveboardWrite(int fd, const void *buf, size_t count)
             bufferIdx = 0;
         }
     }
+    aerActivationDiagnosticsFirstWriteResult((int64_t)count);
     return count;
+}
+
+void driveboardObserveWriteContext(uint64_t timestampNs, int endpoint, int writeApi, size_t requestedLength)
+{
+    aerActivationDiagnosticsFirstWrite(timestampNs, endpoint, writeApi, requestedLength,
+                                       wheelInitialized, enableRead, response);
 }
 
 void processDrivePacket(uint8_t *buf, int player)
 {
+    uint8_t responseBefore = response;
     static int fcP1 = 0;
     static int fcP2 = 0;
 
@@ -212,10 +224,12 @@ void processDrivePacket(uint8_t *buf, int player)
     }
 
     enableRead = 1;
+    aerActivationDiagnosticsResponseTransition(responseBefore, response);
 }
 
 int driveBoardioctl(int fd, unsigned int request, void *data)
 {
+    aerActivationDiagnosticsIoctl(enableRead, response);
     if (enableRead)
     {
         uint8_t d = 1;

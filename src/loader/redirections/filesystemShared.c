@@ -31,6 +31,7 @@
 #include "../log/log.h"
 #include "filesystemShared.h"
 #include "../research/aerDriveboardRecorder.h"
+#include "../research/aerActivationDiagnostics.h"
 
 #ifdef __linux__
 #include <dlfcn.h>
@@ -943,6 +944,10 @@ ssize_t sharedWrite(int fd, const void *buf, size_t count)
         _write = REAL_FUNC(write);
 #endif
 
+    int diagnosticEndpoint = sharedAerDriveboardEndpointForFd(fd);
+    if (diagnosticEndpoint != AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
+        driveboardObserveWriteContext(aerDriveboardRecorderMonotonicNs(), diagnosticEndpoint,
+                                      AER_DRIVEBOARD_EVENT_WRITE, count);
     // void *addr = __builtin_return_address(0);
     if (fd == (int)hooks[BASEBOARD])
     {
@@ -983,10 +988,16 @@ ssize_t sharedWrite(int fd, const void *buf, size_t count)
 
     int aerEndpoint = sharedAerDriveboardEndpointForFd(fd);
     if (!aerDriveboardRecorderEnabled() || aerEndpoint == AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
-        return _write(fd, buf, count);
+    {
+        ssize_t result = _write(fd, buf, count);
+        if (aerEndpoint != AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
+            aerActivationDiagnosticsFirstWriteResult(result);
+        return result;
+    }
     AerDriveboardPendingWrite aerWrite;
     aerDriveboardRecorderPrepareWrite(&aerWrite, (AerDriveboardEndpoint)aerEndpoint, fd, buf, count);
     ssize_t result = _write(fd, buf, count);
+    aerActivationDiagnosticsFirstWriteResult(result);
     aerDriveboardRecorderCompleteWrite(&aerWrite, result);
     return result;
 }
@@ -1089,6 +1100,8 @@ int sharedSelect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
     if ((getConfig()->emulateHW210CardReader == 1 || getConfig()->emulateDriveboard == 1) &&
         (gGrp != GROUP_ID5 && gGrp != GROUP_ID4_EXP && gGrp != GROUP_ID4_JAP))
     {
+        if (getConfig()->emulateDriveboard == 1)
+            aerActivationDiagnosticsSelectReadable();
         return 1;
     }
 

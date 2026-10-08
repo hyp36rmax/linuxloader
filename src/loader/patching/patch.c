@@ -24,6 +24,7 @@
 #include "../graphics/shaderPatches.h"
 #include "../graphics/customCursor.h"
 #include "../graphics/glutBridge.h"
+#include "../research/aerActivationDiagnostics.h"
 #include "flowControl.h"
 #include "patchNetwork.h"
 
@@ -2395,10 +2396,10 @@ int initPatch()
             detourFunction(0x08190e2e, amDipswSetLed);
 
             // Taken from original patched OUTRUN 2 SP SDX by Android and improved a little
-            patchMemoryFromString(0x08105317, "e91f000000");
-            patchMemoryFromString(0x08109593, "9090");
-            patchMemoryFromString(0x08109597, "9090");
-            patchMemoryFromString(0x0810959D, "77");
+            aerActivationDiagnosticsPatch(0x08105317, "e91f000000", "base-08105317");
+            aerActivationDiagnosticsPatch(0x08109593, "9090", "base-08109593");
+            aerActivationDiagnosticsPatch(0x08109597, "9090", "base-08109597");
+            aerActivationDiagnosticsPatch(0x0810959D, "77", "base-0810959d");
 
             // Shader Patches
             detourFunction(0x0804ca98, gl_ProgramStringARB);
@@ -2423,16 +2424,16 @@ int initPatch()
             if (config->skipOutrunCabinetCheck)
             {
                 // Bypass checks for Actuator and Force Feedback
-                detourFunction(0x08103eaa, stubRetOne); // Steering wheel
-                detourFunction(0x08105d88, stubRetOne); // Actuator
+                aerActivationDiagnosticsCreateReturnOneHook(0x08103eaa, "steering-wheel-check");
+                aerActivationDiagnosticsCreateReturnOneHook(0x08105d88, "actuator-check");
             }
 
             // Always enable FFB commands output
             if (getConfig()->emulateDriveboard)
             {
-                patchMemoryFromString(0x081e2180, "df43"); // driveboard patches
-                patchMemoryFromString(0x0810401b, "0c");
-                detourFunction(0x08105d88, stubRetOne); // actuator stub
+                aerActivationDiagnosticsPatch(0x081e2180, "df43", "driveboard-output-081e2180");
+                aerActivationDiagnosticsPatch(0x0810401b, "0c", "driveboard-output-0810401b");
+                aerActivationDiagnosticsCreateReturnOneHook(0x08105d88, "actuator-output-check");
             }
         }
         break;

@@ -30,13 +30,17 @@ jobs:
       run: scripts/windows/install-packages.sh
 
     - name: Compile Build for Windows
+      id: build
       shell: bash
-      run: scripts/windows/windows-build.sh
+      run: |
+        ./tests/run_aer_driveboard_recorder_tests.sh
+        ./tests/run_aer_activation_diagnostics_tests.sh
+        scripts/windows/windows-build.sh
+        echo "artifact_name=LinuxLoader-DEV3-AER01I-WIN32-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
-    - name: Upload linuxloader-win32.zip artifact
+    - name: Upload AER-01I Windows artifact
       uses: actions/upload-artifact@v4
       with:
-        name: "windows-build" 
-        path: "linuxloader-win32.zip"
-
+        name: ${{ steps.build.outputs.artifact_name }}
+        path: "LinuxLoader-DEV3-AER01I-WIN32-*.zip"
 

@@ -18,6 +18,7 @@
 #include "../minhook/include/MinHook.h"
 #include "log/log.h"
 #include "research/aerDriveboardRecorder.h"
+#include "research/aerActivationDiagnostics.h"
 
 #if defined(__linux__)
 #include "input/evdevInput.h"
@@ -64,6 +65,7 @@ void initMain(char *configPath, char *controlsPath)
         .skipCabinetCheck = getConfig()->skipOutrunCabinetCheck,
     };
     aerDriveboardRecorderInitialize(&aerMetadata);
+    aerActivationDiagnosticsInitialize(getDvpName());
 
     initFpsLimiter();
 
@@ -89,7 +91,9 @@ void initMain(char *configPath, char *controlsPath)
         exit(1);
     log_info("Resolution patches initialized");
 
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)
+    MH_STATUS hookEnableResult = MH_EnableHook(MH_ALL_HOOKS);
+    aerActivationDiagnosticsHooksEnabled(hookEnableResult);
+    if (hookEnableResult != MH_OK)
     {
         log_error("Failed to enable hooks");
         exit(1);
