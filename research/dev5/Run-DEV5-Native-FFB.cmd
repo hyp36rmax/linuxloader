@@ -2,43 +2,45 @@
 setlocal EnableExtensions
 cd /d "%~dp0"
 
+rem Every launch gets its own capture directory; never block on or delete prior results.
 set "CAPTURE_ROOT=%~dp0AER-DEV5-captures"
-set "RUN_GUARD=%CAPTURE_ROOT%\DEV5_SESSION_STARTED.txt"
-if exist "%RUN_GUARD%" (
-  echo DEV 5 has already been started from this package.
-  echo Use a freshly extracted package for the one controlled validation session.
-  exit /b 2
-)
-
 if not exist "%~dp0Jennifer" (
   echo DEV 5 FAILED: Jennifer was not found beside this launcher.
-  exit /b 3
+  goto :failed
 )
 if not exist "%~dp0linuxloader.exe" (
   echo DEV 5 FAILED: linuxloader.exe is missing.
-  exit /b 4
+  goto :failed
+)
+if not exist "%~dp0BUILD_INFO.txt" (
+  echo DEV 5 FAILED: BUILD_INFO.txt is missing.
+  goto :failed
 )
 
 for /f %%I in ('powershell -NoProfile -Command "(Get-FileHash -Algorithm SHA256 -LiteralPath '%~dp0Jennifer').Hash.ToLowerInvariant()"') do set "JENNIFER_SHA256=%%I"
 if /i not "%JENNIFER_SHA256%"=="f16fc04d836a2bd8e401d8f987d4fe694fa16e18a9f870da6623d7f884911075" (
   echo DEV 5 FAILED: Jennifer is not the verified DVP-0015A executable.
-  exit /b 5
+  goto :failed
 )
-for /f "tokens=2,* delims=:" %%A in ('findstr /b /c:"Full commit SHA:" "%~dp0BUILD_INFO.txt"') do set "AER_LOADER_COMMIT=%%B"
+for /f "tokens=1,* delims=:" %%A in ('findstr /b /c:"Full commit SHA:" "%~dp0BUILD_INFO.txt"') do set "AER_LOADER_COMMIT=%%B"
 for /f "tokens=*" %%I in ("%AER_LOADER_COMMIT%") do set "AER_LOADER_COMMIT=%%I"
 if not defined AER_LOADER_COMMIT (
   echo DEV 5 FAILED: BUILD_INFO.txt does not identify the build commit.
-  exit /b 6
+  goto :failed
 )
 
-for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set "STAMP=%%I"
+for /f %%I in ('powershell -NoProfile -Command "(Get-Date -Format yyyyMMdd-HHmmss) + '-' + ([guid]::NewGuid().ToString('N').Substring(0,8))"') do set "STAMP=%%I"
+if not defined STAMP (
+  echo DEV 5 FAILED: could not generate capture session ID.
+  goto :failed
+)
 set "SESSION=%CAPTURE_ROOT%\%STAMP%"
 mkdir "%SESSION%" >nul 2>&1
 if errorlevel 1 (
   echo DEV 5 FAILED: could not create the dedicated capture directory.
-  exit /b 7
+  goto :failed
 )
->"%RUN_GUARD%" echo DEV 5 session started: %STAMP%
+
 
 set "AER_VIRTUAL_DRIVEBOARD=1"
 set "AER_VIRTUAL_DRIVEBOARD_COUNT=1"
@@ -72,3 +74,10 @@ if "%FINALIZE_EXIT%"=="0" (
 echo Capture directory: %SESSION%
 pause
 exit /b %FINALIZE_EXIT%
+
+:failed
+echo.
+echo DEV 5 could not start. Previous capture folders have been preserved.
+echo Please report the error shown above; do not edit or move game files.
+pause
+exit /b 1
