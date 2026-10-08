@@ -1,4 +1,5 @@
 #include "experienceRuntime.h"
+#include "experienceInput.h"
 extern "C"
 {
 #include "iniParser.h"
@@ -44,8 +45,8 @@ namespace
     }
     void report()
     {
-        std::printf("LINDBERGH_EXPERIENCE=1\nCONTRACT=1\nBASE_REVISION=9aa6e3e45ccfbbc60eb0f975aa9d3d158a13706c\nBUILD_REVISION=%s\nARCH="
-                    "x86\nCONTROLS_EFFECTIVE_PATH=1\nCONFIG_SPACES=1\nSAVE_ROOTS=1\nGAMEPLAY_READINESS=0\nCOMPLETE_ISOLATION=0\n",
+        std::printf("LINDBERGH_EXPERIENCE=1\nCONTRACT=2\nBASE_REVISION=9aa6e3e45ccfbbc60eb0f975aa9d3d158a13706c\nBUILD_REVISION=%s\nARCH="
+                    "x86\nCONTROLS_EFFECTIVE_PATH=1\nCONFIG_SPACES=1\nSAVE_ROOTS=1\nGAMEPLAY_READINESS=0\nCOMPLETE_ISOLATION=0\nLOGICAL_INPUT=1\n",
                     EXPERIENCE_BUILD_REVISION);
     }
 } // namespace
@@ -78,7 +79,7 @@ extern "C" int experienceEntry(int argc, char **argv)
                 preflight = true;
                 continue;
             }
-            if (key == "-c" || key == "-o" || key == "-L" || key == "--experience-data" || key == "--experience-session")
+            if (key == "-c" || key == "-o" || key == "-L" || key == "--experience-data" || key == "--experience-session" || key == "--experience-input-pipe" || key == "--experience-input-owner")
             {
                 if (i + 1 >= argc || values.count(key))
                     throw std::runtime_error("Missing or duplicate integration argument");
@@ -125,6 +126,20 @@ extern "C" int experienceEntry(int argc, char **argv)
         iniFree(ini);
         if (!safe)
             throw std::runtime_error("EEPROM/SRAM paths must be inside durable data root");
+        if (values.count("--experience-input-pipe") != values.count("--experience-input-owner"))
+            throw std::runtime_error("Input pipe and owner arguments must be paired");
+        if (values.count("--experience-input-pipe")) {
+            unsigned owner = 0;
+            auto text = values.at("--experience-input-owner");
+            if (text.empty() || text.find_first_not_of("0123456789") != std::string::npos || text.size() > 10)
+                throw std::runtime_error("Invalid input owner PID");
+            auto number = std::stoull(text);
+            if (number == 0 || number > 0xffffffffu) throw std::runtime_error("Invalid input owner PID");
+            owner = static_cast<unsigned>(number);
+            if (experienceInputConfigure(values.at("--experience-input-pipe").c_str(), owner) != 0)
+                throw std::runtime_error("Invalid or unsupported input channel");
+            if (preflight) experienceInputClose();
+        }
         if (preflight)
         {
             std::printf("EXPERIENCE_PREFLIGHT=1\n");

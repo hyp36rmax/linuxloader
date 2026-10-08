@@ -1,7 +1,7 @@
 name: Experience runtime integration
 on:
   push:
-    branches: [integration/experience-runtime]
+    branches: [integration/experience-runtime, integration/experience-multi-input]
   pull_request:
     branches: [main]
 permissions:

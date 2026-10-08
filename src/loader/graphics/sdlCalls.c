@@ -25,6 +25,7 @@
 #include "fpsLimiter.h"
 #include "customCursor.h"
 #include "../input/sdlInput.h"
+#include "../config/experienceInput.h"
 #include "../hardware/lindbergh/jvs.h"
 #include "../resources/LiberationMono-Regular.h"
 #include "../resources/icon.h"
@@ -311,6 +312,7 @@ void sdlQuit()
         SDL_DestroyWindow(g_SdlWindow);
         g_SdlWindow = NULL;
     }
+    experienceInputClose();
     SDL_Quit();
     exit(0);
 }
@@ -381,7 +383,7 @@ void pollEvents()
             case SDL_EVENT_JOYSTICK_BUTTON_UP:
             case SDL_EVENT_JOYSTICK_AXIS_MOTION:
             case SDL_EVENT_JOYSTICK_HAT_MOTION:
-                processSdlEvent(&event);
+                if (!experienceInputEnabled()) processSdlEvent(&event);
                 break;
             case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
                 sdlQuit();
@@ -396,13 +398,14 @@ void pollEvents()
             break;
             case SDL_EVENT_WINDOW_MOUSE_LEAVE:
             case SDL_EVENT_WINDOW_MOUSE_ENTER:
-                processSdlEvent(&event);
+                if (!experienceInputEnabled()) processSdlEvent(&event);
             default:
                 break;
         }
     }
     if (sdlInputInitialized)
     {
+        if (experienceInputEnabled()) { processExperienceInput(); return; }
         if (gGrp == GROUP_HOD4 || gGrp == GROUP_HOD4_TEST)
             updateGunShake();
         updateCombinedAxes();

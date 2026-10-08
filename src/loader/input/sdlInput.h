@@ -230,6 +230,7 @@ int initSdlInput(const char *controlsPath);
 int loadProfileFromIni(const IniSection *section);
 void loadGlobalConfig(const IniConfig *ini);
 void processChangedActions();
+void processExperienceInput(void);
 void processSdlEvent(const SDL_Event *e);
 void initJvsMappings();
 void setDefaultMappings();
