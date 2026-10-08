@@ -14,7 +14,15 @@
 #include <sys/stat.h>
 #include <stdarg.h>
 #include <unistd.h>
+#if defined(__linux__) || defined(__APPLE__)
 #include <sys/uio.h>
+#else
+struct iovec
+{
+    void *iov_base;
+    size_t iov_len;
+};
+#endif
 #include "../config/config.h"
 #include "../mainShared.h"
 #include "../hardware/lindbergh/baseBoard.h"
