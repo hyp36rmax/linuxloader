@@ -1,0 +1,22 @@
+Base revision: 9aa6e3e45ccfbbc60eb0f975aa9d3d158a13706c
+Existing upstream dependency bytes; no new binaries distributed.
+
+2750d69dfc01699b3a81432083375e37533bd6579ad87f788c24c29eca2df125  libs/win32/libFAudio.a
+0dfbe724f157fbfcbf0a15a4e33a19e14afded34e63a08ac29c6bd09c82e1da7  libs/win32/libSDL3.a
+c045e353cb1573a5a80cb48537ea4e4d22c8ef1b795143487a518629c81a4b1c  libs/win32/libSDL3_image.a
+cf89f267330c535d7b0efdda70ea1b0edcbadfdcb8e7275242d1fbf3485dd2d7  libs/win32/libSDL3_ttf.a
+004a7fd35d43cb9577feb77c9551e63672b7694454837c1f475286f5ae46ce09  libs/win32/libfreetype.a
+cabbcc8376707137f76de1ff7cef525333e609541941dd58b75834a338567271  libs/win32/libharfbuzz.a
+d7c5eadbcad39cbb2e6a3ec839d747bf85f3470cf07c9e5c9873546bd6197b2e  libs/win32/ll-deps/cg.dll
+50593f257282c3328057a4061fa84f16f9fc31dbe977d8ee025427bd6d9372cc  libs/win32/ll-deps/cg2.dll
+ff07f5bf56490ee932aacbe3c6a9a22a60b2275f8dfb5b518f28f502c71361b5  libs/win32/ll-deps/cgGL.dll
+97e3cd16cf9558849c62a8d2454c11c02e3c2bea7597cbdb22a6ced875e55cd8  libs/win32/ll-deps/libcrypto.so.0.9.7
+7920c44502497e76e91e827c239dcb96aa8a74f230f59a8ef1b10f9f93e6e895  libs/win32/ll-deps/libncurses.so.5
+4c37f239812066d6040379fade9eeaa6f3460cb543899dc1c33c5a1489898eb7  libs/win32/ll-deps/libpcsclite.so.1
+19c1bfab9bd971d4c0b11bd2bd393db8104f3b358528609349f0d4fb8f6098d3  libs/win32/ll-deps/libssl.so.0.9.7
+c9e6aec5a6ed401cf889e5e5c88d9f4b761b876eaeb4714482e8d5022b43e9e1  libs/win32/ll-deps/libstdc++.so.5
+338f47fc2c668e9bd99d3a8d6f0335c0dccf2a1fdfa5b9ec9150fda969aae611  libs/win32/ll-deps/libstdc++.so.6
+4b8fe5a7c35929bc0c13b5547fec200a825be9ccd05694021d22f7cf88270e6d  libs/win32/ll-deps/openal32.dll
+098fbecc0de1575eae8bf52a5b93d6d6711d17ae096be970d876d60df2ad3956  libs/win32/ll-deps/zink/libgallium_wgl.dll
+751946dabc235425d6a8e32f176babd6e4ba5c4d4e614ad44f7743f6b5198f9a  libs/win32/ll-deps/zink/opengl32.dll
+2aa72169e23e743bf092713f961e42b112e84c11cb0985d0a14dcc5fcc960507  libs/win32/ll-deps/zlib1.dll

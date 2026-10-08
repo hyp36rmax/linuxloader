@@ -194,6 +194,8 @@ extern const size_t gDefaultMahjongBindingsSize;
 #ifndef COMPILING_LINUXLOADER_ELF
 
 // Forward declaration
+#include "../config/experienceRuntime.h"
+static char effectiveControlsPath[1024];
 void saveGuidsToIni();
 
 /**
@@ -249,19 +251,15 @@ int initSdlInput(const char *controlsPath)
     initJvsMappings();
     initActionProperties();
 
-    // Load control bindings from specified file on tries to load it from the current folder, otherwise use defaults.
-    struct stat buffer;
-    IniConfig *ini;
+    // Capture the exact load destination once; later CWD changes cannot redirect writeback.
+    IniConfig *ini = NULL;
     int isProfileLoaded = 0;
-    if (stat(controlsPath, &buffer) == 0)
+    if (experienceControlsPath(controlsPath, effectiveControlsPath, sizeof(effectiveControlsPath)) > 0)
+        ini = iniLoad(effectiveControlsPath);
+    else if (experienceActive())
     {
-        log_debug("controls config file loaded from %s\n", controlsPath);
-        ini = iniLoad(controlsPath);
-    }
-    else
-    {
-        log_debug("controls config file \"controls.ini\" loaded from current folder\n");
-        ini = iniLoad("controls.ini");
+        log_error("Experience controls path is invalid; refusing fallback");
+        return -1;
     }
 
     if (ini)
@@ -2323,41 +2321,14 @@ void saveGuidsToIni()
         return;
     }
 
-    printf("Saving updated controller GUIDs to controls.ini...\n");
-    IniConfig *ini = iniLoad("controls.ini");
-    if (!ini)
-    {
-        // If the file doesn't exist, create an empty config in memory to save.
-        ini = (IniConfig *)calloc(1, sizeof(IniConfig));
-        if (!ini)
-        {
-            fprintf(stderr, "ERROR: Failed to allocate memory for INI config.\n");
-            return;
-        }
-    }
-
-    // Set the GUID value for each player. iniSetValue will create the section/key if needed.
-    for (int player = 1; player <= MAX_PLAYERS; player++)
-    {
-        if (strlen(gPlayerGUIDs[player]) > 0)
-        {
-            char key[16];
-            snprintf(key, sizeof(key), "P%d_GUID", player);
-            iniSetValue(ini, "ControllerGUIDs", key, gPlayerGUIDs[player]);
-        }
-    }
-
-    if (iniSave(ini, "controls.ini") == 0)
-    {
-        printf("Successfully saved controls.ini with updated GUIDs.\n");
-    }
+    const char *guids[MAX_PLAYERS];
+    for (int player = 1; player <= MAX_PLAYERS; ++player)
+        guids[player - 1] = gPlayerGUIDs[player];
+    if (experienceSaveGuids(effectiveControlsPath, guids, MAX_PLAYERS) == 0)
+        gPlayerGUIDsDirty = false;
     else
-    {
-        fprintf(stderr, "ERROR: Failed to save controls.ini.\n");
-    }
+        fprintf(stderr, "ERROR: Failed to save GUIDs to %s; changes remain pending.\n", effectiveControlsPath);
 
-    iniFree(ini);
-    gPlayerGUIDsDirty = false;
 }
 
 #endif

@@ -1,3 +1,4 @@
+#include "loader/config/experienceRuntime.h"
 #if defined(_WIN32) || defined(__MINGW32__)
 #include "../redirections/filesystemShared.h"
 #include "memoryManager.hpp"
@@ -914,6 +915,27 @@ namespace LibcBridge
     int bridgeSystem(const char *command)
     {
         log_debug("system(\"%s\")", command);
+        // Known bootstrap commands map to owned temporary paths, without a shell.
+        if (experienceActive()) {
+            const char *target = nullptr;
+            if (strcmp(command, "touch /var/tmp/mwlogo") == 0) target = "/var/tmp/mwlogo";
+            else if (strcmp(command, "touch /tmp/segaboot/test") == 0) target = "/tmp/segaboot/test";
+            else if (strcmp(command, "touch /var/tmp/atr_init") == 0) target = "/var/tmp/atr_init";
+            else if (strcmp(command, "touch /var/tmp/atr_err") == 0) target = "/var/tmp/atr_err";
+            else if (strncmp(command, "touch /var/tmp/warning", 20) == 0) target = "/var/tmp/warning";
+            if (target) {
+                char mapped[1024];
+                if (experienceMapPath(target, mapped, sizeof(mapped)) <= 0) return -1;
+                FILE *file = fopen(mapped, "ab");
+                if (!file) return -1;
+                return fclose(file);
+            }
+            if (strcmp(command, "mkdir /tmp/segaboot > /dev/null") == 0) return 0;
+            if (strcmp(command, "cd /tmp/segaboot > /dev/null") == 0) return -1;
+            if (strncmp(command, "ifconfig eth0", 11) == 0) return 0;
+            errno = EACCES;
+            return -1; // Unknown guest shell commands cannot mutate installations.
+        }
         if (strcmp(command, "touch /var/tmp/mwlogo") == 0)
             command = "type nul > .\\tmp\\mwlogo";
 

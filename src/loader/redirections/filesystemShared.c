@@ -8,6 +8,7 @@
 #undef __x86_64__
 
 #include <dirent.h>
+#include <errno.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <string.h>
@@ -30,6 +31,7 @@
 #include "../resources/lindberghLogo.h"
 #include "../log/log.h"
 #include "filesystemShared.h"
+#include "../config/experienceRuntime.h"
 
 #ifdef __linux__
 #include <dlfcn.h>
@@ -76,6 +78,8 @@ void ConvertPath(char *dst, const char *src, size_t size)
 {
     if (!src || !dst)
         return;
+    int mapped = experienceMapPath(src, dst, size);
+    if (mapped != 0) { if (mapped < 0) dst[0] = 0; return; }
     strncpy(dst, src, size - 1);
     dst[size - 1] = '\0';
 
@@ -92,6 +96,11 @@ int sharedRemove(const char *path)
     if (_remove == NULL)
         _remove = REAL_FUNC(remove);
 
+    char isolated[1024];
+    int mapped = experienceMapPath(path, isolated, sizeof(isolated));
+    if (mapped < 0) return -1;
+    if (mapped > 0) return _remove(isolated);
+    if (!experienceWritablePathAllowed(path)) { errno = EACCES; return -1; }
     if (strncmp(path, "/home/disk1/rankingdata/", 24) == 0 && (gGrp == GROUP_OUTRUN || gGrp == GROUP_OUTRUN_TEST))
     {
         path += 12;
@@ -128,6 +137,17 @@ int sharedMkdir(const char *path, mode_t mode)
         _mkdir = REAL_FUNC(mkdir);
 #endif
 
+    char isolated[1024];
+    int mapped = experienceMapPath(path, isolated, sizeof(isolated));
+    if (mapped < 0) return -1;
+    if (mapped > 0) {
+#ifdef __linux__
+        return _mkdir(isolated, mode);
+#else
+        return _mkdir(isolated);
+#endif
+    }
+    if (!experienceWritablePathAllowed(path)) { errno = EACCES; return -1; }
     if (strncmp(path, "/tmp", 4) == 0)
     {
         path += 1;
@@ -254,6 +274,17 @@ int sharedOpen(const char *pathname, int flags, ...)
         return hooks[SERIAL1];
     }
 
+    char isolated[1024];
+    int mapped = experienceMapPath(pathname, isolated, sizeof(isolated));
+    if (mapped < 0) return -1;
+    if (mapped > 0) {
+#ifdef _WIN32
+        return _open(isolated, translateOpenFlags(flags), translateOpenMode(mode));
+#else
+        return _open(isolated, flags, mode);
+#endif
+    }
+    if ((flags & (3 | 0x40 | 0x200 | 0x400)) && !experienceWritablePathAllowed(pathname)) { errno = EACCES; return -1; }
     if (strcmp(pathname, "/var/tmp/warning") == 0)
     {
         pathname = "./tmp/warning";
@@ -306,6 +337,11 @@ FILE *sharedFopen(const char *restrict pathname, const char *restrict mode)
 {
     if (_fopen == NULL)
         _fopen = REAL_FUNC(fopen);
+    char isolated[1024];
+    int mapped = experienceMapPath(pathname, isolated, sizeof(isolated));
+    if (mapped < 0) return NULL;
+    if (mapped > 0) return _fopen(isolated, strcmp(mode, "r") == 0 ? "rb" : mode);
+    if (strpbrk(mode, "wa+") && !experienceWritablePathAllowed(pathname)) { errno = EACCES; return NULL; }
 #ifdef _WIN32
 
     if (strcmp(mode, "r") == 0)
@@ -535,6 +571,11 @@ FILE *sharedFopen64(const char *pathname, const char *mode)
 {
     if (_fopen64 == NULL)
         _fopen64 = REAL_FUNC(fopen64);
+    char isolated[1024];
+    int mapped = experienceMapPath(pathname, isolated, sizeof(isolated));
+    if (mapped < 0) return NULL;
+    if (mapped > 0) return _fopen64(isolated, mode);
+    if (strpbrk(mode, "wa+") && !experienceWritablePathAllowed(pathname)) { errno = EACCES; return NULL; }
 
     if (strcmp(pathname, "/proc/sys/kernel/osrelease") == 0)
     {

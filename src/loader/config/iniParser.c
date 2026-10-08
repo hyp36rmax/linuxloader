@@ -231,8 +231,9 @@ int iniSave(const IniConfig *config, const char *filename)
         }
     }
 
-    fclose(file);
-    return 1;
+    int failed = ferror(file);
+    if (fclose(file) != 0) failed = 1;
+    return failed ? -1 : 1;
 }
 
 const char *iniGetValue(const IniConfig *config, const char *sectionName, const char *key)

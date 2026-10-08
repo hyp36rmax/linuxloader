@@ -1,5 +1,6 @@
 #if defined(_WIN32) || defined(__MINGW32__)
 #include <cstdlib>
+#include "config/experienceRuntime.h"
 
 #include <filesystem>
 #include <winsock2.h>
@@ -77,6 +78,8 @@ void initBridges()
 
 int main(int argc, char *argv[], char *envp[])
 {
+    int experienceResult = experienceEntry(argc, argv);
+    if (experienceResult >= 0) return experienceResult;
     logSetMinLevel(LOG_WARN);
 
     char command[MAX_PATH_LENGTH] = {0};
@@ -86,8 +89,9 @@ int main(int argc, char *argv[], char *envp[])
     char gamePath[MAX_PATH_LENGTH] = {0};
 
     log_info("Parsing arguments...\n");
-    if (parseArgs(argc, argv, command, originalDir, gameELF, libraryPath) != PARSE_ARGS_SUCCESS)
-        return EXIT_SUCCESS;
+    int parsed = parseArgs(argc, argv, command, originalDir, gameELF, libraryPath);
+    if (parsed != PARSE_ARGS_SUCCESS)
+        return parsed == PARSE_ARGS_HELP ? EXIT_SUCCESS : EXIT_FAILURE;
 
     char elfPath[MAX_PATH_LENGTH];
     char elfArgs[MAX_PATH_LENGTH] = "";
@@ -118,9 +122,11 @@ int main(int argc, char *argv[], char *envp[])
     log_info("Initializing bridges...\n");
     initBridges();
 
-    if (!std::filesystem::exists("tmp"))
+    const char *temporary = experienceTemporaryRoot();
+    if (temporary) std::filesystem::create_directories(std::filesystem::path(temporary) / "segaboot");
+    if (!temporary && !std::filesystem::exists("tmp"))
         std::filesystem::create_directory("tmp");
-    if (!std::filesystem::exists("tmp\\segaboot"))
+    if (!temporary && !std::filesystem::exists("tmp\\segaboot"))
         std::filesystem::create_directory("tmp\\segaboot");
 
     log_info("Loading ELF file: %s\n", elfPath);
@@ -158,6 +164,7 @@ int main(int argc, char *argv[], char *envp[])
 
     log_debug("Initializing main...");
     initMain(configPath, controlsPath);
+    experienceInitialized();
 
     int final_argc = 0;
     char *final_argv_arr[10];

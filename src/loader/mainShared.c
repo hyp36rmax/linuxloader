@@ -19,6 +19,7 @@
 #endif
 
 #include "config/configIni.h"
+#include "config/experienceRuntime.h"
 #include "input/evdevInput.h"
 #include "input/controlIniGen.h"
 #include "input/sdlInput.h"
@@ -593,31 +594,13 @@ void setEnvironmentVariables(const char *ldLibPath, const char *originalDir, con
 
     if (strlen(confFilePath) > 0)
     {
-        if (hasSpaces(confFilePath))
-        {
-            log_warn("Configuration file path '%s' contains spaces; the loader will use the default configuration.", confFilePath);
-            confFilePath = "";
-        }
-        else if (!fileExists(confFilePath))
-        {
-            log_warn("Configuration file '%s' does not exist; the loader will use the default configuration.", confFilePath);
-            confFilePath = "";
-        }
+        if (!fileExists(confFilePath)) confFilePath = "";
         setenv(LINUX_LOADER_CONFIG_PATH, confFilePath, 1);
     }
 
     if (strlen(contFilePath) > 0)
     {
-        if (hasSpaces(contFilePath))
-        {
-            log_warn("Controls file path '%s' contains spaces; the loader will use the default controls configuration.", contFilePath);
-            contFilePath = "";
-        }
-        else if (!fileExists(contFilePath))
-        {
-            log_warn("Controls file '%s' does not exist; the loader will use the default controls configuration.", contFilePath);
-            contFilePath = "";
-        }
+        if (!fileExists(contFilePath)) contFilePath = "";
         setenv(LINUX_LOADER_CONTROLS_PATH, contFilePath, 1);
     }
 
@@ -882,6 +865,12 @@ int parseArgs(int argc, char *argv[], char *command, char *originalDir, char *ga
             continue;
         }
 #endif
+        if (strcmp(argv[i], "--experience-data") == 0 || strcmp(argv[i], "--experience-session") == 0)
+        {
+            if (!experienceActive() || i + 1 >= argc) return PARSE_ARGS_FAILURE;
+            ++i;
+            continue;
+        }
         if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--config") == 0)
         {
             if (i + 1 >= argc)
