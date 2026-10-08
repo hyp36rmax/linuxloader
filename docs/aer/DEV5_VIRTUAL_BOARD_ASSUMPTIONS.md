@@ -5,6 +5,26 @@ executable. It preserves the original game's initialization, cabinet-check,
 callback-installation, and steering-command ownership. It does not reproduce
 Sega drive-board firmware or physical motor behavior.
 
+## Runtime-confirmed packet topology
+
+The first native write recovered from the original executable was:
+
+`FF 00 00 7D 00 00 02`
+
+It is a valid seven-byte original-protocol frame: two three-byte command slots
+followed by their XOR checksum (`0x7f ^ 0x7d == 0x02`). The first slot is the
+native `0x7f` probe and the second is the native `0x7d` neutral/idle request.
+This proves that Jennifer uses the two-slot transport contract during this
+initialization path. It does not, by itself, establish the cabinet's physical
+board count or the physical role of either slot.
+
+The initial DEV 5 package selected the four-byte single-slot transport. It
+therefore rejected this first seven-byte write before command policy evaluation,
+accepted zero frames, returned `-1` to Jennifer, and entered the transport fault
+state. The launcher now selects the two-slot contract. Regression coverage
+retains the captured bytes verbatim and proves both the former rejection and
+the corrected acceptance/response behavior.
+
 ## Synthetic response policy
 
 The original executable establishes which parsed status advances each game-side

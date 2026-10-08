@@ -15,6 +15,10 @@ Repeated launches preserve existing captures and create a new unique session.
 An earlier failed or interrupted attempt does not require deleting a guard file
 or re-extracting the package. Preflight errors remain visible in the CMD window.
 
+The virtual SERIAL0 transport uses Jennifer's runtime-verified two-slot packet
+contract. This describes original packet framing only; it does not claim a
+physical cabinet board count or physical motor topology.
+
 Never remove existing game files or captures to troubleshoot the launcher.
 DEV5_SUCCESS.txt confirms game-side activation evidence only; it does not
 establish authentic physical Sega arcade force-feedback behavior. The research

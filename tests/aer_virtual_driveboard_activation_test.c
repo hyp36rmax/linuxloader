@@ -93,11 +93,38 @@ static void test_dual_board_frame(void)
     assert(!transport.physicalOutputAccessed);
 }
 
+static void test_captured_dev5_first_write_contract(void)
+{
+    static const uint8_t captured[7]={0xff,0x00,0x00,0x7d,0x00,0x00,0x02};
+    AerVdbTransport transport;uint8_t responses[2]={0xff,0xff};
+
+    /* DEV 5's former single-slot configuration reproduces the live rejection. */
+    aerVdbTransportInit(&transport,1);
+    aerVdbTransportEnableNativePolicy(&transport,NULL,NULL);
+    assert(aerVdbTransportStart(&transport));
+    errno=0;
+    assert(aerVdbTransportWrite(&transport,captured,sizeof(captured))==-1);
+    assert(errno==ENOBUFS&&transport.lifecycle==AER_VDB_FAULT);
+    assert(transport.acceptedFrames==0);
+
+    /* Jennifer's observed contract contains two command slots and one XOR byte. */
+    aerVdbTransportInit(&transport,2);
+    aerVdbTransportEnableNativePolicy(&transport,NULL,NULL);
+    assert(aerVdbTransportStart(&transport));
+    assert(aerVdbTransportWrite(&transport,captured,sizeof(captured))==(ssize_t)sizeof(captured));
+    assert(aerVdbTransportRead(&transport,responses,sizeof(responses))==2);
+    assert(responses[0]==0&&responses[1]==0);
+    assert(transport.acceptedFrames==1&&transport.nativeCommandFrames==2);
+    assert(transport.lifecycle==AER_VDB_INITIALIZING);
+    assert(!transport.physicalOutputAccessed);
+}
+
 int main(void)
 {
     test_native_activation_contract();
     test_unknown_initialization_command_fails_closed();
     test_dual_board_frame();
+    test_captured_dev5_first_write_contract();
     puts("AER-02H DEV 5 activation transport: all tests passed");
     return 0;
 }

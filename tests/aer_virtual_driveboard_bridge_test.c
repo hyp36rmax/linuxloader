@@ -52,10 +52,19 @@ static void start(const AerVdbBridgeRequest *r)
 int main(int argc,char **argv)
 {
     char hash[65],byte=0; int queued=-1; uint8_t frame[4];
+    static const uint8_t captured[7]={0xff,0x00,0x00,0x7d,0x00,0x00,0x02};
+    uint8_t capturedResponses[2]={0xff,0xff};
     const void *parts[2]={frame,frame+2}; size_t sizes[2]={2,2};
     assert(argc==2); fixture(argv[1]); assert(aerVdbSha256File(argv[1],hash));
     AerVdbBridgeRequest r=request(argv[1],hash),off=r;
     off.requested=0; aerVdbBridgeReset(); assert(aerVdbBridgeInitialize(&off)==AER_VDB_BOOTSTRAP_DISABLED); assert(!aerVdbBridgeEligible());
+    r.boardCount=2; start(&r);
+    assert(aerVdbBridgeWrite(50,captured,sizeof(captured))==(ssize_t)sizeof(captured));
+    assert(aerVdbBridgeRead(50,capturedResponses,sizeof(capturedResponses))==2);
+    assert(capturedResponses[0]==0&&capturedResponses[1]==0);
+    assert(aerVdbBridgeAcceptedFrames()==1&&aerVdbBridgeNativeCommandFrames()==2);
+    assert(!aerVdbBridgePhysicalOutputAccessed());
+    aerVdbBridgeShutdown(); r.boardCount=1;
     make_frame(frame,0x7f,0,0);
     start(&r); assert(aerVdbBridgeDup(50,51)); assert(aerVdbBridgeWrite(50,frame,2)==2); assert(aerVdbBridgeWrite(51,frame+2,2)==2);
     assert(aerVdbBridgeReadable(50)); assert(aerVdbBridgeWritable(51));
