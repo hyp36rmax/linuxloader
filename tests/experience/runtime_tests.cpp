@@ -80,6 +80,18 @@ int main()
         auto wrong = args;
         wrong[2] = (session / "missing").string();
         check(entry(wrong) == 64, "missing config rejects fallback");
+        wrong = args;
+        wrong[4] = (data / "missing controls.ini").string();
+        check(entry(wrong) == 64, "missing controls rejects fallback");
+        wrong = args;
+        wrong.insert(wrong.end(), {"-o", controls.string()});
+        check(entry(wrong) == 64, "duplicate controls argument rejected");
+        auto validConfig = read(config);
+        write(config, "[Paths]\nEEPROM_PATH = " + (game / "eeprom.bin").generic_string() +
+                          "\nSRAM_PATH = " + (data / "sram.bin").generic_string() + "\n");
+        check(entry(args) == 64, "unowned EEPROM destination rejected");
+        write(config, validConfig);
+        check(entry(args) == 0, "preflight recovers after rejected configuration");
         args.pop_back();
         check(entry(args) == -1 && experienceActive(), "activate scoped roots");
         char mapped[1024];
@@ -89,9 +101,11 @@ int main()
         check(experienceMapPath("/tmp/segaboot/test", mapped, sizeof(mapped)) == 1 && fs::path(mapped) == session / "tmp/segaboot/test",
               "temporary bootstrap map");
         check(experienceMapPath("rankingdata/../../game/controls.ini", mapped, sizeof(mapped)) < 0, "traversal rejected");
+        check(experienceMapPath("/tmp/test", mapped, 2) < 0, "mapped path cannot truncate");
         check(!experienceWritablePathAllowed((game / "controls.ini").string().c_str()), "unowned game write blocked");
         check(experienceSaveGuids((game / "controls.ini").string().c_str(), guids, 2) < 0,
               "writeback cannot overwrite unowned game config");
+        check(experienceSaveGuids(data.string().c_str(), guids, 2) < 0, "failed INI write is not success");
         // Actual EEPROM settings implementation must initialize the borrowed configured stream.
         auto save = data / "eeprom.bin";
         FILE *stream = std::fopen(save.string().c_str(), "w+b");

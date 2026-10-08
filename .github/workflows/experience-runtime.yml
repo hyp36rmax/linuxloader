@@ -37,6 +37,7 @@ jobs:
           gcc --version
           cmake --version
           pacman -Q mingw-w64-i686-gcc mingw-w64-i686-cmake mingw-w64-i686-ninja
+          tail -n +4 docs/integration/DEPENDENCY_SHA256.txt | sha256sum --check
           sha256sum libs/win32/*.a libs/win32/ll-deps/*.*
       - name: Build external x86 runtime
         run: |
