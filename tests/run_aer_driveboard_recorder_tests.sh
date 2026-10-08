@@ -13,4 +13,5 @@ cc -std=c11 -Wall -Wextra -Werror -D_POSIX_C_SOURCE=200809L -DAER_RECORDER_TESTI
 
 "$test_dir/aer_driveboard_recorder_test" disabled "$test_dir/disabled"
 "$test_dir/aer_driveboard_recorder_test" capture "$test_dir/capture"
+"$test_dir/aer_driveboard_recorder_test" paths "$test_dir/unused"
 echo "AER drive-board recorder synthetic tests passed"

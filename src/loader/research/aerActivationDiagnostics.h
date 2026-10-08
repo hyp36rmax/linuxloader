@@ -13,6 +13,7 @@ extern "C" {
 void aerActivationDiagnosticsInitialize(const char *gameRevision);
 void aerActivationDiagnosticsShutdown(void);
 int aerActivationDiagnosticsEnabled(void);
+int aerActivationDiagnosticsUsesAtexit(void);
 void aerActivationDiagnosticsPatch(size_t address, const char *replacement, const char *label);
 void aerActivationDiagnosticsCreateReturnOneHook(size_t address, const char *label);
 void aerActivationDiagnosticsHooksEnabled(int result);

@@ -116,10 +116,20 @@ void aerActivationDiagnosticsInitialize(const char *revision)
     atomic_init(&g_diag.readsWithoutResponse, 0);
     atomic_init(&g_diag.responseTransitions, 0);
     atomic_init(&g_diag.firstWriteSeen, 0);
+#if !defined(__linux__)
     atexit(aerActivationDiagnosticsShutdown);
+#endif
 }
 
 int aerActivationDiagnosticsEnabled(void) { return g_diag.enabled; }
+int aerActivationDiagnosticsUsesAtexit(void)
+{
+#if defined(__linux__)
+    return 0;
+#else
+    return 1;
+#endif
+}
 
 void aerActivationDiagnosticsPatch(size_t address, const char *replacement, const char *label)
 {

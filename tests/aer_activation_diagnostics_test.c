@@ -59,6 +59,11 @@ int main(int argc, char **argv)
     aerActivationDiagnosticsInitialize("DVP-0015A");
     aerActivationDiagnosticsInitialize("DVP-0015A");
     assert(aerActivationDiagnosticsEnabled());
+#if defined(__linux__)
+    assert(aerActivationDiagnosticsUsesAtexit() == 0);
+#else
+    assert(aerActivationDiagnosticsUsesAtexit() == 1);
+#endif
 
     unsigned char success[2] = {0x12, 0x34};
     aerActivationDiagnosticsPatch((size_t)success, "AABB", "success");

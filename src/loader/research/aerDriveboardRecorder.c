@@ -390,17 +390,50 @@ static void *writerMain(void *unused)
     return NULL;
 }
 
-static void makeOutputPaths(void)
+static int appendPathSuffix(char *destination, size_t capacity, const char *prefix, const char *suffix)
 {
-    const char *prefix = getenv("AER_DRIVEBOARD_OUTPUT");
-    char generated[AER_PATH_SIZE];
+    size_t prefixLength = strlen(prefix);
+    size_t suffixLength = strlen(suffix);
+    if (capacity == 0 || prefixLength > SIZE_MAX - suffixLength - 1 ||
+        prefixLength + suffixLength + 1 > capacity)
+        return -1;
+    memcpy(destination, prefix, prefixLength);
+    memcpy(destination + prefixLength, suffix, suffixLength + 1);
+    return 0;
+}
+
+static int buildOutputPaths(const char *configuredPrefix, uint64_t timestamp,
+                            char *binaryPath, size_t binaryCapacity,
+                            char *metadataPath, size_t metadataCapacity)
+{
+    const char *prefix = configuredPrefix;
+    char generated[64];
     if (prefix == NULL || prefix[0] == '\0')
     {
-        snprintf(generated, sizeof(generated), "aer_driveboard_%" PRIu64, g_recorder.startTimestampNs);
+        int written = snprintf(generated, sizeof(generated), "aer_driveboard_%" PRIu64, timestamp);
+        if (written < 0 || (size_t)written >= sizeof(generated))
+            return -1;
         prefix = generated;
     }
-    snprintf(g_recorder.binaryPath, sizeof(g_recorder.binaryPath), "%s.aerbin", prefix);
-    snprintf(g_recorder.metadataPath, sizeof(g_recorder.metadataPath), "%s.json", prefix);
+    if (appendPathSuffix(binaryPath, binaryCapacity, prefix, ".aerbin") != 0)
+        return -1;
+    if (appendPathSuffix(metadataPath, metadataCapacity, prefix, ".json") != 0)
+        return -1;
+    return 0;
+}
+
+static int makeOutputPaths(void)
+{
+    const char *prefix = getenv("AER_DRIVEBOARD_OUTPUT");
+    if (buildOutputPaths(prefix, g_recorder.startTimestampNs,
+                         g_recorder.binaryPath, sizeof(g_recorder.binaryPath),
+                         g_recorder.metadataPath, sizeof(g_recorder.metadataPath)) != 0)
+    {
+        g_recorder.binaryPath[0] = '\0';
+        g_recorder.metadataPath[0] = '\0';
+        fprintf(stderr, "AER drive-board recorder not started: output prefix is too long for capture paths\n");
+        return -1;
+    }
     snprintf(g_recorder.captureId, sizeof(g_recorder.captureId), "aer-%" PRIu64 "-%" PRIu64,
              (uint64_t)aer_getpid(), g_recorder.startTimestampNs);
     const char *marker = getenv("AER_DRIVEBOARD_MARKER_FILE");
@@ -415,6 +448,7 @@ static void makeOutputPaths(void)
             fclose(markerFile);
         }
     }
+    return 0;
 }
 
 void aerDriveboardRecorderInitialize(const AerDriveboardRecorderMetadata *metadata)
@@ -452,7 +486,8 @@ void aerDriveboardRecorderInitialize(const AerDriveboardRecorderMetadata *metada
 #endif
     pthread_mutex_init(&g_recorder.mutex, NULL);
     pthread_cond_init(&g_recorder.condition, NULL);
-    makeOutputPaths();
+    if (makeOutputPaths() != 0)
+        return;
 
     g_recorder.binaryFile = fopen(g_recorder.binaryPath, "wb");
     if (g_recorder.binaryFile == NULL)
@@ -631,5 +666,12 @@ void aerDriveboardRecorderMark(const char *marker)
 void aerDriveboardRecorderTestPauseWriter(int paused)
 {
     atomic_store(&g_recorder.writerPaused, paused != 0);
+}
+
+int aerDriveboardRecorderTestBuildOutputPaths(const char *prefix, uint64_t timestamp,
+                                              char *binaryPath, size_t binaryCapacity,
+                                              char *metadataPath, size_t metadataCapacity)
+{
+    return buildOutputPaths(prefix, timestamp, binaryPath, binaryCapacity, metadataPath, metadataCapacity);
 }
 #endif

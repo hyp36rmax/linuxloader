@@ -72,6 +72,39 @@ static void testDisabled(const char *prefix)
     aerDriveboardRecorderShutdown();
 }
 
+static void testOutputPaths(void)
+{
+    char binary[1024];
+    char metadata[1024];
+    assert(aerDriveboardRecorderTestBuildOutputPaths("short/capture", 42, binary, sizeof(binary),
+                                                      metadata, sizeof(metadata)) == 0);
+    assert(strcmp(binary, "short/capture.aerbin") == 0);
+    assert(strcmp(metadata, "short/capture.json") == 0);
+
+    char maximumPrefix[1017];
+    memset(maximumPrefix, 'x', sizeof(maximumPrefix) - 1);
+    maximumPrefix[sizeof(maximumPrefix) - 1] = '\0';
+    assert(aerDriveboardRecorderTestBuildOutputPaths(maximumPrefix, 42, binary, sizeof(binary),
+                                                      metadata, sizeof(metadata)) == 0);
+    assert(strlen(binary) == sizeof(binary) - 1);
+
+    char excessivePrefix[1018];
+    memset(excessivePrefix, 'y', sizeof(excessivePrefix) - 1);
+    excessivePrefix[sizeof(excessivePrefix) - 1] = '\0';
+    assert(aerDriveboardRecorderTestBuildOutputPaths(excessivePrefix, 42, binary, sizeof(binary),
+                                                      metadata, sizeof(metadata)) != 0);
+
+    assert(aerDriveboardRecorderTestBuildOutputPaths("", 42, binary, sizeof(binary),
+                                                      metadata, sizeof(metadata)) == 0);
+    assert(strcmp(binary, "aer_driveboard_42.aerbin") == 0);
+    assert(strcmp(metadata, "aer_driveboard_42.json") == 0);
+
+    assert(aerDriveboardRecorderTestBuildOutputPaths("abcd", 42, binary, 11,
+                                                      metadata, sizeof(metadata)) != 0);
+    assert(aerDriveboardRecorderTestBuildOutputPaths("abcd", 42, binary, sizeof(binary),
+                                                      metadata, 9) != 0);
+}
+
 static void verifyMetadata(const char *prefix)
 {
     char path[512];
@@ -263,6 +296,8 @@ int main(int argc, char **argv)
         testDisabled(argv[2]);
     else if (strcmp(argv[1], "capture") == 0)
         testCapture(argv[2]);
+    else if (strcmp(argv[1], "paths") == 0)
+        testOutputPaths();
     else
         return 2;
     return 0;

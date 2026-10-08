@@ -73,6 +73,9 @@ void aerDriveboardRecorderMark(const char *marker);
 
 #ifdef AER_RECORDER_TESTING
 void aerDriveboardRecorderTestPauseWriter(int paused);
+int aerDriveboardRecorderTestBuildOutputPaths(const char *prefix, uint64_t timestamp,
+                                              char *binaryPath, size_t binaryCapacity,
+                                              char *metadataPath, size_t metadataCapacity);
 #endif
 
 #ifdef __cplusplus
