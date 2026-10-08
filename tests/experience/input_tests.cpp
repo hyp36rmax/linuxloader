@@ -97,10 +97,14 @@ int main()
             CreateNamedPipeA(name, PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED,
                              PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS, 1, 32, 32, 0, nullptr);
         check(server != INVALID_HANDLE_VALUE, "repeated channel fixture created");
+        connection = {};
+        connection.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+        check(!ConnectNamedPipe(server, &connection) && GetLastError() == ERROR_IO_PENDING, "wrong-owner fixture connection pending");
         check(experienceInputConfigure(name, GetCurrentProcessId() + 1) == 0, "wrong-owner configuration can be parsed");
         check(experienceInputPoll(&value) == -1 && value.buttons == 0, "production receiver rejects wrong server PID");
         experienceInputClose();
         CloseHandle(server);
+        CloseHandle(connection.hEvent);
 #endif
         std::cout << "experience_input: " << checks << " checks passed\n";
         return 0;

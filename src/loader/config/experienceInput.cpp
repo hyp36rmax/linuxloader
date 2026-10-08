@@ -89,7 +89,8 @@ extern "C" int experienceInputPoll(ExperienceInputSnapshot *output)
         return -1;
     if (pipe == INVALID_HANDLE_VALUE)
     {
-        pipe = CreateFileA(pipeName.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
+        pipe =
+            CreateFileA(pipeName.c_str(), GENERIC_READ | FILE_WRITE_ATTRIBUTES, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
         if (pipe == INVALID_HANDLE_VALUE)
             return GetTickCount64() - began < 5000 ? 0 : -1;
         ULONG server = 0;
