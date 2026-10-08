@@ -21,9 +21,13 @@ What the original motor torque, direction, and pattern waveforms felt like remai
 
 [Discovering OutRun 2 SP's Original Arcade Steering System](ARCADE_STEERING_DISCOVERY.md) tells the story of the investigation and the main discoveries without requiring disassembly knowledge.
 
+[Letting OutRun Complete Its Own Steering Startup](VIRTUAL_DRIVEBOARD_OVERVIEW.md) explains the confirmed loader activation failure and the safety boundary for a possible virtual drive board.
+
 ### Technical research reference
 
 [Native Steering Technical Reference](NATIVE_STEERING_TECHNICAL_REFERENCE.md) contains the recovered execution path, equations, masks, pattern tables, protocol, scheduling, and confidence limits.
+
+[AER-02F Virtual Drive-Board Technical Design](VIRTUAL_DRIVEBOARD_MODEL.md) documents the original activation states, loader divergence, synthetic protocol model, safety invariants, and remaining firmware assumptions.
 
 ## Supporting references
 
@@ -41,4 +45,3 @@ The game-side steering architecture is substantially reconstructed. The most imp
 AER records original arcade evidence. HYP36rforce is my independent modern FFB system. A future selectable Arcade profile may use validated AER findings as design input, but it would remain a modern interpretation—not recovered Sega firmware behavior. Reference+ remains a separate existing HYP36rforce experience.
 
 OutRun 2 SP Arcade Experience is another potential consumer of this research. AER-MOTION and SimHub remain separate future research directions.
-
