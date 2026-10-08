@@ -23,11 +23,15 @@ What the original motor torque, direction, and pattern waveforms felt like remai
 
 [Letting OutRun Complete Its Own Steering Startup](VIRTUAL_DRIVEBOARD_OVERVIEW.md) explains the confirmed loader activation failure and the safety boundary for a possible virtual drive board.
 
+[Designing the Virtual Drive-Board Boundary](VIRTUAL_DRIVEBOARD_INTEGRATION_OVERVIEW.md) explains how that model could fit behind LinuxLoader's existing serial bridge while the game retains ownership of initialization.
+
 ### Technical research reference
 
 [Native Steering Technical Reference](NATIVE_STEERING_TECHNICAL_REFERENCE.md) contains the recovered execution path, equations, masks, pattern tables, protocol, scheduling, and confidence limits.
 
 [AER-02F Virtual Drive-Board Technical Design](VIRTUAL_DRIVEBOARD_MODEL.md) documents the original activation states, loader divergence, synthetic protocol model, safety invariants, and remaining firmware assumptions.
+
+[AER-02G Virtual Drive-Board Runtime Integration Specification](VIRTUAL_DRIVEBOARD_INTEGRATION_SPEC.md) defines revision locking, configuration conflicts, virtual descriptor behavior, calibration isolation, failure handling, and the pre-implementation validation gate.
 
 ## Supporting references
 
