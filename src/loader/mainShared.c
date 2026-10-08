@@ -865,7 +865,7 @@ int parseArgs(int argc, char *argv[], char *command, char *originalDir, char *ga
             continue;
         }
 #endif
-        if (strcmp(argv[i], "--experience-data") == 0 || strcmp(argv[i], "--experience-session") == 0)
+        if (strcmp(argv[i], "--experience-data") == 0 || strcmp(argv[i], "--experience-session") == 0 || strcmp(argv[i], "--experience-input-pipe") == 0 || strcmp(argv[i], "--experience-input-owner") == 0)
         {
             if (!experienceActive() || i + 1 >= argc) return PARSE_ARGS_FAILURE;
             ++i;

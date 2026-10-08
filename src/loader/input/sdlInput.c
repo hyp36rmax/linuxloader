@@ -20,6 +20,7 @@
 #include "../hardware/lindbergh/forceFeedback.h"
 #include "../config/iniParser.h"
 #include "sdlInput.h"
+#include "../config/experienceInput.h"
 #include "../hardware/lindbergh/jvs.h"
 #include "../log/log.h"
 #include "../hardware/lindbergh/touchScreen.h"
@@ -250,6 +251,14 @@ int initSdlInput(const char *controlsPath)
     // Initialize all mappings and properties.
     initJvsMappings();
     initActionProperties();
+
+    if (experienceInputEnabled())
+    {
+        if (gGrp != GROUP_OUTRUN) { log_error("Experience logical input is limited to OutRun gameplay"); return -1; }
+        remapPerGame();
+        sdlInputInitialized = true;
+        return 0; // Host is sole physical-input owner; no slot assignment/writeback.
+    }
 
     // Capture the exact load destination once; later CWD changes cannot redirect writeback.
     IniConfig *ini = NULL;
@@ -2464,4 +2473,31 @@ int listSdlControllers(void)
     }
     SDL_Quit();
     return 0;
+}
+
+/* Already normalized host actions enter the existing dirty/action-to-JVS path. */
+void processExperienceInput(void)
+{
+    ExperienceInputSnapshot value;
+    int result = experienceInputPoll(&value);
+    if (result < 0) { log_error("Experience logical input protocol/owner failed"); exit(65); }
+    const LogicalAction analog[] = {LA_Steer, LA_Gas, LA_Brake};
+    const double levels[] = {value.steer, value.gas, value.brake};
+    for (int i = 0; i < 3; ++i) {
+        ActionState *state = &gActionStates[PLAYER_1][analog[i]];
+        state->analogValue = (float)levels[i];
+        addActionToDirtyList(PLAYER_1, analog[i]);
+    }
+    const LogicalAction digital[] = {LA_GearUp, LA_GearDown, LA_Start, LA_Coin, LA_ViewChange, LA_MusicChange, LA_Service, LA_Test, LA_ExitGame};
+    for (int i = 0; i < 9; ++i) {
+        if (i == 5) continue; /* Reserved: OutRun has no MusicChange mapping. */
+        JVSPlayer player = digital[i] == LA_Test ? SYSTEM : fixPlayerForAction(digital[i], PLAYER_1);
+        bool active = (value.buttons & (1u << i)) != 0;
+        ActionState *state = &gActionStates[player][digital[i]];
+        if (state->isActive != active) {
+            state->isActive = active;
+            addActionToDirtyList(player, digital[i]);
+        }
+    }
+    processChangedActions();
 }
