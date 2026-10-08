@@ -44,6 +44,7 @@ jobs:
           cmake -S . -B build-runtime -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
           cmake --build build-runtime --parallel 2
           ./build-runtime/linuxloader.exe --experience-capabilities
+          ./build-runtime/linuxloader.exe --experience-capabilities | tr -d '\r' | grep -Fx "BUILD_REVISION=$GITHUB_SHA"
       - name: Run asset-free production persistence tests
         run: |
           cmake -S tests/experience -B build-experience -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
