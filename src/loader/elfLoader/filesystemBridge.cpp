@@ -13,6 +13,7 @@
 #include <cstring>
 #include "../config/config.h"
 #include "../hardware/lindbergh/driveBoard.h"
+#include "../research/aerActivationDiagnostics.h"
 #include "../research/aerDriveboardRecorder.h"
 
 extern std::string g_absoluteElfPath;
