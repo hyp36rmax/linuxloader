@@ -16,8 +16,8 @@ An earlier failed or interrupted attempt does not require deleting a guard file
 or re-extracting the package. Preflight errors remain visible in the CMD window.
 
 The virtual SERIAL0 transport uses Jennifer's runtime-verified two-slot packet
-contract. This describes original packet framing only; it does not claim a
-physical cabinet board count or physical motor topology.
+contract for the SDX cabinet's separate left and right steering motor-driver
+assemblies. Both logical slots share the one original SERIAL0 transaction.
 
 Never remove existing game files or captures to troubleshoot the launcher.
 DEV5_SUCCESS.txt confirms game-side activation evidence only; it does not

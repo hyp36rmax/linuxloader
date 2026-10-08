@@ -15,8 +15,9 @@ It is a valid seven-byte original-protocol frame: two three-byte command slots
 followed by their XOR checksum (`0x7f ^ 0x7d == 0x02`). The first slot is the
 native `0x7f` probe and the second is the native `0x7d` neutral/idle request.
 This proves that Jennifer uses the two-slot transport contract during this
-initialization path. It does not, by itself, establish the cabinet's physical
-board count or the physical role of either slot.
+initialization path. Sega's SDX cabinet documentation independently identifies
+the two L/R motor-driver assemblies; Jennifer combines their two logical command
+slots into one SERIAL0 packet. See [SDX Steering Hardware Topology](SDX_HARDWARE_TOPOLOGY.md).
 
 The initial DEV 5 package selected the four-byte single-slot transport. It
 therefore rejected this first seven-byte write before command policy evaluation,

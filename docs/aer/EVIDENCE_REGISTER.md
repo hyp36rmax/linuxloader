@@ -429,6 +429,7 @@ Game-generated requests are never treated as proof of a particular torque, wavef
 - **Functions:** `steerReqSendA()` `0x08105A48–0x08105AD1`; `steerReqSendOut()` `0x08105AD2–0x08105BFB`
 - **Observation:** Single-board packets are four bytes; dual-board packets are seven bytes. The first command byte has bit 7 set for transport. The final byte is XOR of unmarked command and payload bytes. There is no length field.
 - **Confidence:** **CONFIRMED**
+- **SDX reconciliation:** Sega's cabinet documentation identifies separate L/R motor-driver assemblies. `CabinetCtrl_InitWork()` selects two logical channels and seven-byte framing for cabinet types 2/3; both slots are sent together through hardcom channel 0. The first DEV 5 runtime write (`FF 00 00 7D 00 00 02`) matches the state-2 channel-0 probe exactly.
 
 ### AER-EV-PROTO-002 — Initialization and calibration
 

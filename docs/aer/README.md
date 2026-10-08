@@ -23,6 +23,8 @@ What the original motor torque, direction, and pattern waveforms felt like remai
 
 [Letting OutRun Complete Its Own Steering Startup](VIRTUAL_DRIVEBOARD_OVERVIEW.md) explains the confirmed loader activation failure and the safety boundary for a possible virtual drive board.
 
+[SDX Steering Hardware Topology](SDX_HARDWARE_TOPOLOGY.md) reconciles Sega's two L/R motor-driver assemblies with Jennifer's two-slot SERIAL0 packet contract and the first DEV 5 runtime failure.
+
 [Designing the Virtual Drive-Board Boundary](VIRTUAL_DRIVEBOARD_INTEGRATION_OVERVIEW.md) explains how that model could fit behind LinuxLoader's existing serial bridge while the game retains ownership of initialization.
 
 ### Technical research reference
