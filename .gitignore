@@ -4,5 +4,5 @@ build-win32/
 compile_commands.json
 
 
-/build-experience/
-/build-runtime/
+/build-experience*/
+/build-runtime*/
