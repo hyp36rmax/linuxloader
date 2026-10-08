@@ -53,7 +53,7 @@ Each record contains a packed header followed by `payloadLength` raw bytes:
 | Field | Purpose |
 |---|---|
 | record size | Header plus payload bytes |
-| event type | Write, read, marker, or overflow |
+| event type | Direct write, read, marker, overflow, `writev`, `fwrite`, or descriptor duplication |
 | capture status | Complete, truncated, or invalid buffer |
 | sequence | Global recorder sequence |
 | timestamp | Monotonic nanoseconds |
@@ -69,6 +69,12 @@ explicitly classified as **LOADER-SYNTHESIZED RESPONSES**.
 
 The recorder does not assume a write is a protocol packet and does not decode
 commands.
+
+Transport APIs retain their original call boundaries. Event types 1–4 keep
+their original meaning; type 5 is `writev`, type 6 is `fwrite`, and type 7 is
+descriptor duplication. A duplication record stores the source descriptor in
+`file descriptor` and the returned destination descriptor in `operation
+result`. The reserved header field remains zero and has not been reinterpreted.
 
 ## Buffering and completeness
 

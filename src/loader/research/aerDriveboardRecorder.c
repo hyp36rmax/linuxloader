@@ -33,14 +33,6 @@
 
 enum
 {
-    AER_EVENT_WRITE = 1,
-    AER_EVENT_READ = 2,
-    AER_EVENT_MARKER = 3,
-    AER_EVENT_OVERFLOW = 4
-};
-
-enum
-{
     AER_CAPTURE_COMPLETE = 0,
     AER_CAPTURE_TRUNCATED = 1,
     AER_CAPTURE_INVALID_BUFFER = 2
@@ -308,7 +300,7 @@ static void emitPendingOverflowRecord(void)
         return;
 
     AerQueuedEvent event;
-    fillEvent(&event, AER_EVENT_OVERFLOW, AER_CAPTURE_COMPLETE, aerDriveboardRecorderMonotonicNs(),
+    fillEvent(&event, AER_DRIVEBOARD_EVENT_OVERFLOW, AER_CAPTURE_COMPLETE, aerDriveboardRecorderMonotonicNs(),
               AER_DRIVEBOARD_ENDPOINT_UNKNOWN, -1, 0, (ssize_t)(dropped - reported), NULL, 0);
     if (enqueueWriterEvent(&event))
         g_recorder.overflowReportedThrough = dropped;
@@ -336,7 +328,7 @@ static void pollMarkerFile(void)
         if (length == 0)
             continue;
         AerQueuedEvent event;
-        fillEvent(&event, AER_EVENT_MARKER, AER_CAPTURE_COMPLETE, aerDriveboardRecorderMonotonicNs(),
+        fillEvent(&event, AER_DRIVEBOARD_EVENT_MARKER, AER_CAPTURE_COMPLETE, aerDriveboardRecorderMonotonicNs(),
                   AER_DRIVEBOARD_ENDPOINT_UNKNOWN, -1, length, (ssize_t)length, line, length);
         enqueueWriterEvent(&event);
     }
@@ -558,11 +550,18 @@ static void captureEvent(uint16_t eventType, uint64_t timestampNs, AerDriveboard
 void aerDriveboardRecorderCaptureWrite(uint64_t timestampNs, AerDriveboardEndpoint endpoint, int fd,
                                        const void *bytes, size_t requestedCount, ssize_t result)
 {
-    captureEvent(AER_EVENT_WRITE, timestampNs, endpoint, fd, bytes, requestedCount, result, requestedCount);
+    captureEvent(AER_DRIVEBOARD_EVENT_WRITE, timestampNs, endpoint, fd, bytes, requestedCount, result, requestedCount);
 }
 
 void aerDriveboardRecorderPrepareWrite(AerDriveboardPendingWrite *pending, AerDriveboardEndpoint endpoint,
                                        int fd, const void *bytes, size_t requestedCount)
+{
+    aerDriveboardRecorderPrepareWritePath(pending, AER_DRIVEBOARD_EVENT_WRITE, endpoint, fd, bytes, requestedCount);
+}
+
+void aerDriveboardRecorderPrepareWritePath(AerDriveboardPendingWrite *pending, AerDriveboardEventType eventType,
+                                           AerDriveboardEndpoint endpoint, int fd, const void *bytes,
+                                           size_t requestedCount)
 {
     if (pending == NULL)
         return;
@@ -570,6 +569,7 @@ void aerDriveboardRecorderPrepareWrite(AerDriveboardPendingWrite *pending, AerDr
     if (!g_recorder.enabled)
         return;
     pending->active = 1;
+    pending->eventType = eventType;
     pending->timestampNs = aerDriveboardRecorderMonotonicNs();
     pending->endpoint = endpoint;
     pending->fileDescriptor = fd;
@@ -597,7 +597,7 @@ void aerDriveboardRecorderCompleteWrite(AerDriveboardPendingWrite *pending, ssiz
     if (pending == NULL || !pending->active || !g_recorder.enabled)
         return;
     AerQueuedEvent event;
-    fillEvent(&event, AER_EVENT_WRITE, pending->captureStatus, pending->timestampNs, pending->endpoint,
+    fillEvent(&event, pending->eventType, pending->captureStatus, pending->timestampNs, pending->endpoint,
               pending->fileDescriptor, pending->requestedCount, result, pending->bytes, pending->capturedCount);
     enqueueEvent(&event);
     pending->active = 0;
@@ -607,7 +607,13 @@ void aerDriveboardRecorderCaptureRead(uint64_t timestampNs, AerDriveboardEndpoin
                                       const void *bytes, size_t requestedCount, ssize_t result)
 {
     size_t returnedCount = result > 0 ? (size_t)result : 0;
-    captureEvent(AER_EVENT_READ, timestampNs, endpoint, fd, bytes, requestedCount, result, returnedCount);
+    captureEvent(AER_DRIVEBOARD_EVENT_READ, timestampNs, endpoint, fd, bytes, requestedCount, result, returnedCount);
+}
+
+void aerDriveboardRecorderCaptureDuplicate(uint64_t timestampNs, AerDriveboardEndpoint endpoint,
+                                           int sourceFd, int destinationFd)
+{
+    captureEvent(AER_DRIVEBOARD_EVENT_DUP, timestampNs, endpoint, sourceFd, NULL, 0, destinationFd, 0);
 }
 
 void aerDriveboardRecorderMark(const char *marker)
@@ -616,7 +622,7 @@ void aerDriveboardRecorderMark(const char *marker)
         return;
     size_t length = strnlen(marker, AER_MAX_MARKER_BYTES);
     AerQueuedEvent event;
-    fillEvent(&event, AER_EVENT_MARKER, AER_CAPTURE_COMPLETE, aerDriveboardRecorderMonotonicNs(),
+    fillEvent(&event, AER_DRIVEBOARD_EVENT_MARKER, AER_CAPTURE_COMPLETE, aerDriveboardRecorderMonotonicNs(),
               AER_DRIVEBOARD_ENDPOINT_UNKNOWN, -1, length, (ssize_t)length, marker, length);
     enqueueEvent(&event);
 }

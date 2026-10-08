@@ -9,7 +9,10 @@
 #include <io.h>
 #include <direct.h>
 #include <cstdarg>
+#include <cstdint>
+#include <cstring>
 #include "../config/config.h"
+#include "../research/aerDriveboardRecorder.h"
 
 extern std::string g_absoluteElfPath;
 
@@ -109,7 +112,17 @@ namespace FileSystemBridge
     size_t bridgeFwrite(const void *ptr, size_t size, size_t count, FILE *stream)
     {
         log_trace("Intercepted fwrite: %p %zu %zu %p", ptr, size, count, stream);
-        return fwrite(ptr, size, count, stream);
+        int fd = _fileno(stream);
+        int endpoint = sharedAerDriveboardEndpointForFd(fd);
+        size_t requested = (size != 0 && count > SIZE_MAX / size) ? SIZE_MAX : size * count;
+        if (!aerDriveboardRecorderEnabled() || endpoint == AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
+            return fwrite(ptr, size, count, stream);
+        AerDriveboardPendingWrite pending;
+        aerDriveboardRecorderPrepareWritePath(&pending, AER_DRIVEBOARD_EVENT_FWRITE,
+                                              (AerDriveboardEndpoint)endpoint, fd, ptr, requested);
+        size_t result = fwrite(ptr, size, count, stream);
+        aerDriveboardRecorderCompleteWrite(&pending, (ssize_t)result);
+        return result;
     }
 
     int bridgeFerror(FILE *stream)
@@ -181,6 +194,32 @@ namespace FileSystemBridge
     size_t bridgeWritev(int fd, const struct iovec *iov, int iovcnt)
     {
         log_trace("Intercepted writev");
+        int endpoint = sharedAerDriveboardEndpointForFd(fd);
+        AerDriveboardPendingWrite pending;
+        memset(&pending, 0, sizeof(pending));
+        if (aerDriveboardRecorderEnabled() && endpoint != AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
+        {
+            uint8_t bytes[AER_DRIVEBOARD_MAX_EVENT_BYTES];
+            size_t requested = 0;
+            size_t captured = 0;
+            for (int i = 0; i < iovcnt; ++i)
+            {
+                if (SIZE_MAX - requested < iov[i].iov_len)
+                    requested = SIZE_MAX;
+                else
+                    requested += iov[i].iov_len;
+                size_t available = sizeof(bytes) - captured;
+                size_t copy = iov[i].iov_len < available ? iov[i].iov_len : available;
+                if (copy > 0 && iov[i].iov_base != nullptr)
+                    memcpy(bytes + captured, iov[i].iov_base, copy);
+                captured += copy;
+            }
+            aerDriveboardRecorderPrepareWritePath(&pending, AER_DRIVEBOARD_EVENT_WRITEV,
+                                                  (AerDriveboardEndpoint)endpoint, fd, bytes, captured);
+            pending.requestedCount = requested;
+            if (requested > captured)
+                pending.captureStatus = 1;
+        }
         size_t total_written = 0;
         for (int i = 0; i < iovcnt; ++i)
         {
@@ -188,13 +227,14 @@ namespace FileSystemBridge
             if (written < 0)
             {
                 if (total_written == 0)
-                    return -1;
+                    total_written = (size_t)-1;
                 break;
             }
             total_written += written;
             if ((size_t)written < iov[i].iov_len)
                 break;
         }
+        aerDriveboardRecorderCompleteWrite(&pending, (ssize_t)total_written);
         return total_written;
     }
 
@@ -223,7 +263,15 @@ namespace FileSystemBridge
     int bridgeDup(int fd)
     {
         log_trace("Intercepted dup: %d", fd);
-        return dup(fd);
+        int destination = _dup(fd);
+        int endpoint = sharedAerDriveboardEndpointForFd(fd);
+        if (destination >= 0 && endpoint != AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
+        {
+            sharedAerTrackDuplicateFd(fd, destination);
+            aerDriveboardRecorderCaptureDuplicate(aerDriveboardRecorderMonotonicNs(),
+                                                  (AerDriveboardEndpoint)endpoint, fd, destination);
+        }
+        return destination;
     }
 
     extern "C" int bridgeFsync(int fd)

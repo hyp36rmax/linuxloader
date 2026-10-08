@@ -69,6 +69,49 @@ extern int hummerExtremeShaderFileIndex;
 extern bool cachedShaderFilesLoaded;
 extern char vf5StageNameAbbr[5];
 
+#define AER_DUPLICATE_FD_CAPACITY 32
+typedef struct
+{
+    int fd;
+    int endpoint;
+} AerDuplicateFd;
+static AerDuplicateFd aerDuplicateFds[AER_DUPLICATE_FD_CAPACITY];
+
+int sharedAerDriveboardEndpointForFd(int fd)
+{
+    if (fd == (int)hooks[SERIAL0])
+        return AER_DRIVEBOARD_ENDPOINT_SERIAL0;
+    if (fd == (int)hooks[SERIAL1])
+        return AER_DRIVEBOARD_ENDPOINT_SERIAL1;
+    for (size_t i = 0; i < AER_DUPLICATE_FD_CAPACITY; ++i)
+        if (aerDuplicateFds[i].fd == fd)
+            return aerDuplicateFds[i].endpoint;
+    return AER_DRIVEBOARD_ENDPOINT_UNKNOWN;
+}
+
+void sharedAerTrackDuplicateFd(int sourceFd, int destinationFd)
+{
+    int endpoint = sharedAerDriveboardEndpointForFd(sourceFd);
+    if (endpoint == AER_DRIVEBOARD_ENDPOINT_UNKNOWN || destinationFd < 0)
+        return;
+    for (size_t i = 0; i < AER_DUPLICATE_FD_CAPACITY; ++i)
+    {
+        if (aerDuplicateFds[i].fd == destinationFd || aerDuplicateFds[i].endpoint == AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
+        {
+            aerDuplicateFds[i].fd = destinationFd;
+            aerDuplicateFds[i].endpoint = endpoint;
+            return;
+        }
+    }
+}
+
+void sharedAerForgetFd(int fd)
+{
+    for (size_t i = 0; i < AER_DUPLICATE_FD_CAPACITY; ++i)
+        if (aerDuplicateFds[i].fd == fd)
+            memset(&aerDuplicateFds[i], 0, sizeof(aerDuplicateFds[i]));
+}
+
 extern bool mj4ResponseReady;
 
 bool sprFontXstLoaded = false;
@@ -675,6 +718,7 @@ int sharedClose(int fd)
 #endif
 
 
+    sharedAerForgetFd(fd);
     for (size_t i = 0; i < (sizeof hooks / sizeof hooks[0]); i++)
     {
         if ((int)hooks[i] == fd)
@@ -937,7 +981,14 @@ ssize_t sharedWrite(int fd, const void *buf, size_t count)
         return cardReaderWrite(fd, buf, count);
     }
 
-    return _write(fd, buf, count);
+    int aerEndpoint = sharedAerDriveboardEndpointForFd(fd);
+    if (!aerDriveboardRecorderEnabled() || aerEndpoint == AER_DRIVEBOARD_ENDPOINT_UNKNOWN)
+        return _write(fd, buf, count);
+    AerDriveboardPendingWrite aerWrite;
+    aerDriveboardRecorderPrepareWrite(&aerWrite, (AerDriveboardEndpoint)aerEndpoint, fd, buf, count);
+    ssize_t result = _write(fd, buf, count);
+    aerDriveboardRecorderCompleteWrite(&aerWrite, result);
+    return result;
 }
 
 

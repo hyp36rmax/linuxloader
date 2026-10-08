@@ -54,6 +54,9 @@ int sharedFseek(FILE *stream, long int offset, int whence);
 void sharedRewind(FILE *stream);
 int sharedIoctl(int fd, unsigned long int request, ...);
 int sharedSelect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
+int sharedAerDriveboardEndpointForFd(int fd);
+void sharedAerTrackDuplicateFd(int sourceFd, int destinationFd);
+void sharedAerForgetFd(int fd);
 
 #ifdef __cplusplus
 }

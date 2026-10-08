@@ -111,6 +111,10 @@ static void verifyBinary(const char *prefix)
     int sawMarker = 0;
     int sawFileMarker = 0;
     int sawOverflow = 0;
+    int sawWritev = 0;
+    int sawFwrite = 0;
+    int sawDuplicate = 0;
+    int sawSerial1 = 0;
     TestRecordHeader record;
     uint8_t payload[4096];
     while (fread(&record, sizeof(record), 1, file) == 1)
@@ -157,12 +161,34 @@ static void verifyBinary(const char *prefix)
         }
         if (record.eventType == 4 && record.operationResult > 0)
             sawOverflow = 1;
+        if (record.eventType == AER_DRIVEBOARD_EVENT_WRITEV && record.requestedCount == 3 &&
+            record.operationResult == 2 && record.endpoint == AER_DRIVEBOARD_ENDPOINT_SERIAL0)
+        {
+            const uint8_t expected[] = {0xa1, 0xa2, 0xa3};
+            assert(record.payloadLength == sizeof(expected));
+            assert(memcmp(payload, expected, sizeof(expected)) == 0);
+            sawWritev = 1;
+        }
+        if (record.eventType == AER_DRIVEBOARD_EVENT_FWRITE && record.requestedCount == 4 &&
+            record.operationResult == 1 && record.endpoint == AER_DRIVEBOARD_ENDPOINT_SERIAL1)
+        {
+            const uint8_t expected[] = {0xb1, 0xb2, 0xb3, 0xb4};
+            assert(record.payloadLength == sizeof(expected));
+            assert(memcmp(payload, expected, sizeof(expected)) == 0);
+            sawFwrite = 1;
+            sawSerial1 = 1;
+        }
+        if (record.eventType == AER_DRIVEBOARD_EVENT_DUP && record.fileDescriptor == 7 &&
+            record.operationResult == 11 && record.endpoint == AER_DRIVEBOARD_ENDPOINT_SERIAL0)
+            sawDuplicate = 1;
     }
     fclose(file);
-    if (!(sawPartial && sawCombined && sawZeroLength && sawFailed && sawRead && sawMarker && sawFileMarker && sawOverflow))
+    if (!(sawPartial && sawCombined && sawZeroLength && sawFailed && sawRead && sawMarker && sawFileMarker &&
+          sawOverflow && sawWritev && sawFwrite && sawDuplicate && sawSerial1))
     {
-        fprintf(stderr, "missing record: partial=%d combined=%d zero=%d failed=%d read=%d marker=%d file_marker=%d overflow=%d\n",
-                sawPartial, sawCombined, sawZeroLength, sawFailed, sawRead, sawMarker, sawFileMarker, sawOverflow);
+        fprintf(stderr, "missing record: partial=%d combined=%d zero=%d failed=%d read=%d marker=%d file_marker=%d overflow=%d writev=%d fwrite=%d dup=%d serial1=%d\n",
+                sawPartial, sawCombined, sawZeroLength, sawFailed, sawRead, sawMarker, sawFileMarker, sawOverflow,
+                sawWritev, sawFwrite, sawDuplicate, sawSerial1);
         abort();
     }
 }
@@ -197,6 +223,17 @@ static void testCapture(const char *prefix)
     aerDriveboardRecorderCaptureWrite(timestamp++, AER_DRIVEBOARD_ENDPOINT_SERIAL0, 7, NULL, 0, 0);
     aerDriveboardRecorderCaptureWrite(timestamp++, AER_DRIVEBOARD_ENDPOINT_SERIAL0, 7, partial, sizeof(partial), -1);
     aerDriveboardRecorderCaptureRead(timestamp++, AER_DRIVEBOARD_ENDPOINT_SERIAL0, 7, inbound, 16, 1);
+    const uint8_t writevBytes[] = {0xa1, 0xa2, 0xa3};
+    aerDriveboardRecorderPrepareWritePath(&pending, AER_DRIVEBOARD_EVENT_WRITEV,
+                                          AER_DRIVEBOARD_ENDPOINT_SERIAL0, 7,
+                                          writevBytes, sizeof(writevBytes));
+    aerDriveboardRecorderCompleteWrite(&pending, 2);
+    const uint8_t fwriteBytes[] = {0xb1, 0xb2, 0xb3, 0xb4};
+    aerDriveboardRecorderPrepareWritePath(&pending, AER_DRIVEBOARD_EVENT_FWRITE,
+                                          AER_DRIVEBOARD_ENDPOINT_SERIAL1, 9,
+                                          fwriteBytes, sizeof(fwriteBytes));
+    aerDriveboardRecorderCompleteWrite(&pending, 1);
+    aerDriveboardRecorderCaptureDuplicate(timestamp++, AER_DRIVEBOARD_ENDPOINT_SERIAL0, 7, 11);
     aerDriveboardRecorderMark("STATIONARY");
     markerFile = fopen(markerPath, "ab");
     assert(markerFile != NULL);
