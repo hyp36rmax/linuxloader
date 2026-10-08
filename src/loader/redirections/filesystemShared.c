@@ -286,7 +286,7 @@ int sharedOpen(const char *pathname, int flags, ...)
             if (virtualFd < 0 || !aerVdbBridgeAttach(virtualFd))
             {
                 if (virtualFd >= 0)
-                    _close(virtualFd);
+                    sharedClose(virtualFd);
                 errno = EIO;
                 return -1;
             }
