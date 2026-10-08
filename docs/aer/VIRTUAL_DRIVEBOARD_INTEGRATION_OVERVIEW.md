@@ -63,3 +63,15 @@ AER-02H.1 adds that skeleton as an isolated research module. It can hash an exec
 The module is compiled only by its offline test runner. LinuxLoader does not initialize it, the filesystem bridge does not route to it, and the original cabinet-check bypass remains unchanged. The original-byte manifest is deliberately not populated because the complete verified bytes have not yet been established. That makes the target verifier fail closed for any attempted real activation.
 
 This is useful progress without pretending the board is live. We now have testable pieces for identity, configuration, transport, descriptors, calibration, and shutdown, while the dangerous integration step remains unavailable.
+
+## The eligibility boundary is now concrete
+
+AER-02H.2 fills in the previously missing clean-executable manifest. I verified the full `Jennifer` identity and the original bytes at every current cabinet/drive-board patch site, plus the native check, main-loop, command-construction, steering-request, and serial-send entries. The bootstrap reads those locations through the executable's own ELF segment map. A missing byte, a changed instruction, a wrong revision or CRC, or a different full-file hash makes the complete request ineligible.
+
+This strictness matters because recognizing the game by name is not enough. A nearby revision can place valid-looking code at the wrong address, and an existing loader option can deliberately replace the exact native path being studied. The bootstrap therefore also rejects cabinet-check bypass, the normal drive-board emulator, physical serial passthrough, invalid board counts, or an incomplete filesystem bridge. It does not silently turn any of those settings off.
+
+Passing the check still does not start the steering system. The new module is compiled only by offline tests. It does not participate in loader startup, select patches, allocate descriptors, route serial calls, touch game memory, or reach any physical or host force-feedback output. It records only an atomic decision: everything is eligible, or nothing changes.
+
+The audit also narrowed the future bridge surface. The verified game imports the ordinary open/read/write/fwrite/select/ioctl/close family. LinuxLoader already has optional writev and descriptor-duplication support, while the original executable supplies no evidence that openat, dup2, or dup3 needs a new interception path. I am leaving those unsupported paths alone until original evidence says otherwise.
+
+One uncertainty remains intentionally visible: the loader's existing `SetOutFactor()` modification changes an original steering-output gate. It is not an initializer bypass, but its effect on future native-output fidelity needs separate evidence. The next milestone should resolve patch and observer ordering and prove the bridge ABI without yet activating native initialization.

@@ -74,7 +74,39 @@ Activation requires every check below. They are conjunctive, not alternatives.
 7. `SKIP_OUTRUN_CABINET_CHECK=0` and normal `EMULATE_DRIVEBOARD=0`.
 8. Board count is one or two and all research configuration is valid.
 
-The byte manifest must cover at least the initializer entry, `hardacuIsInitEnd()`, the cabinet-check gate/callback transition, and every existing OutRun patch site whose alteration could change native activation. The implementation milestone must recover exact byte spans from the verified executable rather than copying assumptions into this document.
+The byte manifest covers the initializer, actuator check, native callback/output entries, and every current DVP-0015A patch site relevant to activation or steering output. The following bytes were read from the verified `Jennifer` ELF identified above; addresses are original virtual addresses and lengths follow complete instruction or data-entry boundaries.
+
+| Address | Length | Original bytes | Owner | Existing loader action |
+| --- | ---: | --- | --- | --- |
+| `0x08105317` | 6 | `0f 84 6f 01 00 00` | `SetOutFactor()` | Base patch replaces the first five bytes with `e9 1f 00 00 00` |
+| `0x08109593` | 2 | `78 43` | `hmmInitInternal()` | Base patch writes `90 90` |
+| `0x08109597` | 2 | `78 3f` | `hmmInitInternal()` | Base patch writes `90 90` |
+| `0x0810959d` | 2 | `7f 22` | `hmmInitInternal()` | Base patch changes the opcode to `77` |
+| `0x081e2180` | 4 | `db 41 10 08` | `CabinetCtrl_InitDriver()` state table | Emulator patch changes its low word to `df 43` |
+| `0x0810401b` | 1 | `0b` | `CabinetCtrl_InitDriver()` | Emulator patch changes driver state 11 to 12 |
+| `0x08103eaa` | 6 | `55 89 e5 83 ec 28` | `CabinetCtrl_InitDriver()` entry | Cabinet bypass installs a return-one detour |
+| `0x08105d88` | 6 | `55 89 e5 83 ec 18` | `hardacuIsInitEnd()` entry | Cabinet bypass/emulator installs a return-one detour |
+| `0x0810477e` | 6 | `55 89 e5 83 ec 28` | `CabinetCtrl_Check()` entry | No base patch; native integrity requirement |
+| `0x081048b2` | 6 | `55 89 e5 57 56 53` | `CabinetCtrl_Main()` entry | No base patch; native integrity requirement |
+| `0x08104f02` | 6 | `55 89 e5 57 56 53` | `DrCtrlDataSet()` entry | No base patch; native integrity requirement |
+| `0x081051f4` | 6 | `55 89 e5 83 ec 18` | `DrCtrlMoveSend()` entry | No base patch; native integrity requirement |
+| `0x08105ad2` | 6 | `55 89 e5 57 56 53` | `steerReqSendOut()` entry | No base patch; native integrity requirement |
+| `0x0810735e` | 6 | `55 89 e5 8b 4d 08` | `hardcomSend()` entry | No base patch; native integrity requirement |
+
+The bootstrap maps each virtual address through the ELF32 `PT_LOAD` table and compares every byte before declaring eligibility. An unreadable, truncated, missing, or mismatched entry rejects the entire request. This verifies the clean file only; a future integration milestone must also define patch-selection ordering and expected in-memory bytes.
+
+### Existing-patch conflict matrix
+
+| Patch/hook group | Classification | Reason |
+| --- | --- | --- |
+| `SKIP_OUTRUN_CABINET_CHECK`: return-one hooks at `0x08103eaa` and `0x08105d88` | **CONFLICTING** | Replaces original initializer/actuator-check ownership and prevents proof of native progression. |
+| `EMULATE_DRIVEBOARD`: table patch `0x081e2180`, state patch `0x0810401b`, return-one hook `0x08105d88` | **CONFLICTING** | Rewrites driver-state behavior and supplies the existing emulated activation path. |
+| `SetOutFactor()` patch at `0x08105317` | **REQUIRES FURTHER EVIDENCE** | Does not replace initialization, but changes the original steering-output gate and therefore cannot yet be called native-equivalent. |
+| `hmmInitInternal()` patches at `0x08109593`, `0x08109597`, `0x0810959d` | **COMPATIBLE** | Heap/runtime compatibility patches; no observed ownership of cabinet initialization, serial routing, or steering commands. |
+| AER native-activation diagnostic observers | **REQUIRES FURTHER EVIDENCE** | Passive by design, but future hook chaining and verification order must be defined before sharing native entry sites. |
+| Unrelated security, shader, and general compatibility patches | **COMPATIBLE** | No address overlap or established path into the verified cabinet/drive-board control flow. |
+
+No patch is removed or changed by the bootstrap. Conflicting configuration is rejected rather than rewritten.
 
 ### Rejection
 
@@ -94,6 +126,26 @@ Failure occurs before virtual SERIAL0 routing or patch mutation. Log one stable 
 | Virtual on, identity or byte check fails | Reject before patch/routing mutation |
 
 The setting must not silently rewrite either existing option. Startup diagnostics report requested, eligible/rejected, identity results, transport mode, board count, and reason. They must not claim hardware authenticity.
+
+## Eligibility bootstrap implemented by AER-02H.2
+
+`aerVirtualDriveboardBootstrap.c` is an offline research boundary, not a LinuxLoader startup component. It evaluates one request exactly once unless explicitly reset. Eligibility requires the requested flag, DVP-0015A revision string, CRC `0x4debd5f0`, loader-side full-file SHA-256, all 14 original-byte entries, nonconflicting configuration, board count one or two, and the complete required bridge-capability mask.
+
+Evaluation is atomic: the state exposes `eligible` only after all checks pass, and its mutation counter remains zero for success and every rejection. It allocates no descriptor, changes no patch, opens no serial endpoint, and has no fallback path. Default-off and rejected evaluations therefore leave runtime behavior untouched. Repeated evaluation is rejected; reset only clears the offline decision state.
+
+The compile-time production identity remains the authoritative SHA-256. Tests may substitute a synthetic-fixture digest only when built with `AER_VDB_TESTING`.
+
+## Filesystem bridge capability audit
+
+The verified Jennifer import surface reaches `open`, `read`, `write`, `fwrite`, `select`, `ioctl`, and `close`. These form the required bootstrap capability mask. The current Windows bridge additionally intercepts `writev` and `dup`, so they are represented as optional capabilities for the later routing milestone.
+
+Jennifer does not import `openat`, `dup2`, or `dup3`; no evidence currently justifies new global interception for those APIs. LinuxLoader has a native `openat` wrapper on Linux, but the Windows ELF bridge does not map it. Any later static or runtime evidence that one of these paths is reachable must expand both the capability gate and the transport tests before activation.
+
+## AER-02H.2 automated evidence
+
+The focused synthetic-ELF suite verifies default-off, explicit eligibility, wrong revision, CRC mismatch, SHA mismatch, missing executable, modified bytes, incomplete/truncated manifest, each configuration conflict, invalid board counts, missing required bridge capability, repeated evaluation, reset, and zero mutation throughout. A link/dependency check also rejects references from the bootstrap object to serial passthrough, SDL/evdev force feedback, motion output, actuator control, or runtime patch/hook functions.
+
+Existing AER recorder, activation-diagnostic, native-activation, offline-activation, virtual-model, and virtual-infrastructure suites remain the regression authority. No runtime build file includes this bootstrap.
 
 ## Virtual transport contract
 
