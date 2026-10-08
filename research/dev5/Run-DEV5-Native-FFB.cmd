@@ -45,6 +45,8 @@ if errorlevel 1 (
 set "AER_VIRTUAL_DRIVEBOARD=1"
 set "AER_VIRTUAL_DRIVEBOARD_COUNT=2"
 set "AER_VIRTUAL_DRIVEBOARD_PHYSICAL_PASSTHROUGH=0"
+rem The bootstrap independently hashes and verifies this path; metadata alone cannot authorize activation.
+set "AER_GAME_EXECUTABLE_PATH=%~dp0Jennifer"
 set "AER_GAME_EXECUTABLE_SHA256=f16fc04d836a2bd8e401d8f987d4fe694fa16e18a9f870da6623d7f884911075"
 set "AER_CABINET_TYPE=single"
 set "AER_CABINET_ID=research-virtual"
@@ -60,7 +62,9 @@ set "AER_VIRTUAL_DRIVEBOARD_STATUS_OUTPUT=%SESSION%\virtual_driveboard_status.js
 
 echo DEV 5 starting. Diagnostics will be written to:
 echo %SESSION%
-linuxloader.exe -g "%~dp0" -c "%~dp0DEV5-virtual-driveboard.ini"
+rem The launcher already switched to the game directory above.
+rem Avoid passing Windows absolute paths with spaces and parentheses to LinuxLoader.
+linuxloader.exe -g "." -c "DEV5-virtual-driveboard.ini"
 set "LOADER_EXIT=%ERRORLEVEL%"
 
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Finalize-DEV5-Capture.ps1" -SessionPath "%SESSION%" -LoaderExitCode %LOADER_EXIT%
