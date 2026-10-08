@@ -60,7 +60,9 @@ set "AER_VIRTUAL_DRIVEBOARD_STATUS_OUTPUT=%SESSION%\virtual_driveboard_status.js
 
 echo DEV 5 starting. Diagnostics will be written to:
 echo %SESSION%
-linuxloader.exe -g "%~dp0" -c "%~dp0DEV5-virtual-driveboard.ini"
+rem The launcher already switched to the game directory above.
+rem Avoid passing Windows absolute paths with spaces and parentheses to LinuxLoader.
+linuxloader.exe -g "." -c "DEV5-virtual-driveboard.ini"
 set "LOADER_EXIT=%ERRORLEVEL%"
 
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Finalize-DEV5-Capture.ps1" -SessionPath "%SESSION%" -LoaderExitCode %LOADER_EXIT%
