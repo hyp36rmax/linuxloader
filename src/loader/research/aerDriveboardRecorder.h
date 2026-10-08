@@ -49,6 +49,10 @@ typedef struct
     uint8_t bytes[AER_DRIVEBOARD_MAX_EVENT_BYTES];
 } AerDriveboardPendingWrite;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void aerDriveboardRecorderInitialize(const AerDriveboardRecorderMetadata *metadata);
 void aerDriveboardRecorderShutdown(void);
 int aerDriveboardRecorderEnabled(void);
@@ -69,6 +73,10 @@ void aerDriveboardRecorderMark(const char *marker);
 
 #ifdef AER_RECORDER_TESTING
 void aerDriveboardRecorderTestPauseWriter(int paused);
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif
