@@ -25,6 +25,7 @@
 #include "../graphics/customCursor.h"
 #include "../graphics/glutBridge.h"
 #include "../research/aerActivationDiagnostics.h"
+#include "../research/aerNativeActivation.h"
 #include "flowControl.h"
 #include "patchNetwork.h"
 
@@ -2435,6 +2436,7 @@ int initPatch()
                 aerActivationDiagnosticsPatch(0x0810401b, "0c", "driveboard-output-0810401b");
                 aerActivationDiagnosticsCreateReturnOneHook(0x08105d88, "actuator-output-check");
             }
+            aerNativeActivationInstallHooks(config->skipOutrunCabinetCheck);
         }
         break;
         case OUTRUN_2_SP_SDX_SBMB_REVA_TEST:

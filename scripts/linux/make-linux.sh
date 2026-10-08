@@ -20,13 +20,16 @@ mv libkswapapi.so ll-deps/
 mv libsegaapi.so ll-deps/
 mv linuxloader.so ll-deps/
 grep -aFq 'AER_DRIVEBOARD_ACTIVATION_V1' ll-deps/linuxloader.so
+grep -aFq 'AER_NATIVE_ACTIVATION_V1' ll-deps/linuxloader.so
 cat > BUILD_INFO.txt <<EOF
 Full commit SHA: ${GITHUB_SHA:-UNKNOWN}
 CI run ID: ${GITHUB_RUN_ID:-LOCAL}
 Platform: Linux 32-bit
-Research milestone: AER-01I
+Research milestone: AER-01K
 Recorder schema: AER_DRIVEBOARD_RAW_V1
 Diagnostic version: AER_DRIVEBOARD_ACTIVATION_V1
+Native activation schema: AER_NATIVE_ACTIVATION_V1
+Game revision target: DVP-0015A
 EOF
 cd ..
 tar -czvf linuxloader-linux.tar.gz -C ./build-linux .

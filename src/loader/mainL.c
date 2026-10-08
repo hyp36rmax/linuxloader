@@ -26,6 +26,7 @@
 #include "hardware/lindbergh/securityBoard.h"
 #include "research/aerDriveboardRecorder.h"
 #include "research/aerActivationDiagnostics.h"
+#include "research/aerNativeActivation.h"
 
 
 
@@ -290,6 +291,7 @@ void __attribute__((constructor)) hook_init()
 void __attribute__((destructor)) hook_shutdown()
 {
     aerActivationDiagnosticsShutdown();
+    aerNativeActivationShutdown();
     aerDriveboardRecorderShutdown();
 }
 

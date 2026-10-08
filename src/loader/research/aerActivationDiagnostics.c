@@ -1,4 +1,5 @@
 #include "aerActivationDiagnostics.h"
+#include "aerNativeActivation.h"
 
 #include <inttypes.h>
 #include <stdatomic.h>
@@ -187,7 +188,12 @@ static int invoked(size_t address)
     return 1;
 }
 
-int aerActivationDiagnosticsSteeringHook(void) { return invoked(0x08103eaa); }
+int aerActivationDiagnosticsSteeringHook(void)
+{
+    int result = invoked(0x08103eaa);
+    aerNativeActivationObserveInitReplacement(result);
+    return result;
+}
 int aerActivationDiagnosticsActuatorHook(void) { return invoked(0x08105d88); }
 void aerActivationDiagnosticsSelectReadable(void) { if (g_diag.enabled) atomic_fetch_add(&g_diag.selectReadable, 1); }
 void aerActivationDiagnosticsIoctl(int readable, uint8_t response) { (void)response; if (g_diag.enabled) atomic_fetch_add(readable ? &g_diag.ioctlReadable : &g_diag.ioctlNotReadable, 1); }

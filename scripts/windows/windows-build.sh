@@ -8,10 +8,11 @@ test -s "$loader"
 file "$loader" | grep -Eq 'PE32 executable .*Intel 80386'
 grep -aFq 'AER_DRIVEBOARD_RAW_V1' "$loader"
 grep -aFq 'AER_DRIVEBOARD_ACTIVATION_V1' "$loader"
+grep -aFq 'AER_NATIVE_ACTIVATION_V1' "$loader"
 
 short_sha="${GITHUB_SHA:-local}"
 short_sha="${short_sha:0:7}"
-archive="LinuxLoader-DEV3-AER01I-WIN32-${short_sha}.zip"
+archive="LinuxLoader-DEV4-AER01K-WIN32-${short_sha}.zip"
 
 mkdir win-release
 cp "$loader" win-release/linuxloader.exe
@@ -22,9 +23,11 @@ cat > win-release/BUILD_INFO.txt <<EOF
 Full commit SHA: ${GITHUB_SHA:-UNKNOWN}
 CI run ID: ${GITHUB_RUN_ID:-LOCAL}
 Platform: Windows i686 MinGW
-Research milestone: AER-01I
+Research milestone: AER-01K
 Recorder schema: AER_DRIVEBOARD_RAW_V1
 Diagnostic version: AER_DRIVEBOARD_ACTIVATION_V1
+Native activation schema: AER_NATIVE_ACTIVATION_V1
+Game revision target: DVP-0015A
 EOF
 
 required_dependencies=(

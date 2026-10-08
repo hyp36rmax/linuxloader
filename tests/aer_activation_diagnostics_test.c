@@ -11,6 +11,8 @@
 
 static int failPatch;
 
+void aerNativeActivationObserveInitReplacement(int returnValue) { (void)returnValue; }
+
 int patchMemoryFromStringResult(size_t address, const char *value)
 {
     if (failPatch)

@@ -43,6 +43,7 @@ jobs:
       run: |
         ./tests/run_aer_driveboard_recorder_tests.sh
         ./tests/run_aer_activation_diagnostics_tests.sh
+        ./tests/run_aer_native_activation_tests.sh
         scripts/linux/make-linux.sh
         scripts/appimage/make-appimage.sh
 
