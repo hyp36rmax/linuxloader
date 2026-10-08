@@ -31,6 +31,9 @@ jobs:
             mingw-w64-i686-ninja
       - name: Record toolchain and dependency identity
         run: |
+          test "$(pacman -Q mingw-w64-i686-gcc)" = "mingw-w64-i686-gcc 16.2.0-4"
+          test "$(pacman -Q mingw-w64-i686-cmake)" = "mingw-w64-i686-cmake 4.4.3-3"
+          test "$(pacman -Q mingw-w64-i686-ninja)" = "mingw-w64-i686-ninja 1.13.2-1"
           gcc --version
           cmake --version
           pacman -Q mingw-w64-i686-gcc mingw-w64-i686-cmake mingw-w64-i686-ninja
