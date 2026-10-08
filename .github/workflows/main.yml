@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - research/aer-01c-driveboard-recorder
     paths-ignore:
       - '**.md'
       - '.github/ISSUE_TEMPLATE/*'
