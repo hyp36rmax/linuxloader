@@ -36,7 +36,11 @@ int aerVdbSha256File(const char *path, char output[65])
     if (!path || !output || !(f=fopen(path,"rb"))) return 0;
     shaInit(&c); while ((n=fread(data,1,sizeof(data),f))>0) shaUpdate(&c,data,n);
     if (ferror(f)) { fclose(f); return 0; } fclose(f); shaFinal(&c,digest);
-    for(i=0;i<32;i++) sprintf(output+i*2,"%02x",digest[i]); output[64]='\0'; return 1;
+    for (i = 0; i < 32; i++) {
+        sprintf(output + i * 2, "%02x", digest[i]);
+    }
+    output[64] = '\0';
+    return 1;
 }
 
 AerVdbVerifyResult aerVdbVerifyTarget(const AerVdbTarget *t)
