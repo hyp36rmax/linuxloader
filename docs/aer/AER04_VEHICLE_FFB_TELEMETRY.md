@@ -44,6 +44,14 @@ Only V2 synchronized streams can directly compare the observed front-tire direct
 
 It cannot yet call an event a kerb, bump, cobblestone, wall impact, or vehicle impact unless the observed classification is joined to independently established course evidence. Tulip Garden's ordinal-20 bridge-road mapping remains the strongest course-specific reference, but track position is not yet captured.
 
+## Live AER-04 findings and transport follow-up
+
+The first synchronized V1 session `20261008-190100-758af1d8` reported 58,126 telemetry observations, 16,557 raw recorder events and **zero dropped raw records**. The native pipeline reached driver state 12/check state 2 and continued executing its original callback. These counts are historical capture evidence, not verification of the invalid V1 EVWORK_CAR fields.
+
+The early AER-03 and AER-04 sessions both showed virtual transport failure after roughly 500 accepted writes. The captured sequence `80 00 00 00 00 00 00` followed by `87 00 7F 07 00 7F 00` caused the virtual model to leave READY on the first zero command and reject the subsequent `0x07` request. The `fab8780` correction keeps the transport READY when a runtime zero request occurs, with a regression replay of the original seven-byte frames. **No subsequent live capture has yet established continuous acceptance or fault-free shutdown.** The earlier command observer continued running even after writes failed, so callback counts must not be mistaken for accepted virtual frames.
+
+Road-classification and tire-direction conclusions based on `AER_VEHICLE_FFB_V1` are superseded by the pointer-lineage correction documented above. Existing V1 raw FFB commands remain analyzable with the corrected `0x0B` decoder. A live `AER_VEHICLE_FFB_V2` session is still needed for exact kerb/texture event attribution.
+
 ## Capture integrity corrections
 
 The successful AER-03 recording reached virtual lifecycle `FAULT` only after the ready transport stopped receiving traffic long enough to exceed its general 900-tick watchdog. The watchdog is now restricted to initialization/configuration/calibration; a ready but idle board remains ready. Physical disconnect and malformed traffic still fail closed.
