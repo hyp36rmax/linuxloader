@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "aerDriveboardRecorder.h"
+#include "aerVehicleTelemetry.h"
 #ifndef AER_NATIVE_ACTIVATION_TESTING
 #include "../patching/flowControl.h"
 #endif
@@ -172,12 +173,14 @@ static void observeDataSet(void *work, const void *car, const void *carWork, con
 {
     countPipeline(PIPE_DATA_SET);
     g_originalDataSet(work, car, carWork, camera);
+    aerVehicleTelemetryObserveDataSet(car, carWork);
 }
 
 static void observeMoveSend(void *work, const void *car, const void *carWork)
 {
     countPipeline(PIPE_MOVE_SEND);
     g_originalMoveSend(work, car, carWork);
+    aerVehicleTelemetryObserveMoveSend();
 }
 
 static int observeSendOut(unsigned char *bytes)
@@ -185,6 +188,7 @@ static int observeSendOut(unsigned char *bytes)
     countPipeline(PIPE_STEER_SEND_OUT);
     g_zeroSevenCandidate = bytes && !bytes[0] && !bytes[1] && !bytes[2] &&
                            !bytes[3] && !bytes[4] && !bytes[5];
+    aerVehicleTelemetryObserveCommand(bytes, 6);
     int result = g_originalSendOut(bytes);
     g_zeroSevenCandidate = 0;
     return result;

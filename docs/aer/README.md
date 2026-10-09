@@ -27,6 +27,8 @@ What the original motor torque, direction, and pattern waveforms felt like remai
 
 [AER-03 Native FFB Capture Analysis](AER03_NATIVE_FFB_CAPTURE_ANALYSIS.md) records the first live command-distribution and timing findings. Its reusable decoder is under `research/aer/tools/ffb_analyzer/`.
 
+[AER-04 Native FFB and Vehicle Telemetry](AER04_VEHICLE_FFB_TELEMETRY.md) defines the synchronized passive vehicle/command schema, verified signal lineage, integrity corrections, and explicit unknown fields.
+
 [Designing the Virtual Drive-Board Boundary](VIRTUAL_DRIVEBOARD_INTEGRATION_OVERVIEW.md) explains how that model could fit behind LinuxLoader's existing serial bridge while the game retains ownership of initialization.
 
 ### Technical research reference

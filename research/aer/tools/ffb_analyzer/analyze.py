@@ -109,6 +109,23 @@ def write_component_reports(out,s):
     integrity={"input":s["input"],"integrity":s["integrity"],"native_pipeline":s["native_pipeline"],"limitations":s["limitations"]}
     (out/"capture_integrity_report.json").write_text(json.dumps(integrity,indent=2,sort_keys=True)+"\n",encoding="utf-8")
 
+def load_vehicle(path):
+    if not path.exists(): return [],["vehicle_telemetry_unavailable"]
+    lines=path.read_text(encoding="utf-8-sig").splitlines()
+    if not lines or lines[0]!="#schema=AER_VEHICLE_FFB_V1": return [],["vehicle_schema_missing_or_unsupported"]
+    return list(csv.DictReader(lines[1:])),[]
+
+def write_correlations(out,rows,issues):
+    send=[r for r in rows if r.get("event")=="send_out"]
+    road=Counter((r.get("front_left_road_mask"),r.get("front_right_road_mask"),r.get("command"),r.get("value_b")) for r in send)
+    steering=Counter((r.get("front_tire_direction_s16"),r.get("command"),r.get("value_b")) for r in send)
+    payload={"schema":"AER_FFB_VEHICLE_CORRELATION_V1","rows":len(rows),"send_rows":len(send),"issues":issues,
+      "road_command_matrix":[{"front_left":k[0],"front_right":k[1],"command":k[2],"value_b":k[3],"count":n} for k,n in road.most_common()],
+      "steering_command_matrix":[{"front_tire_direction":k[0],"command":k[1],"value_b":k[2],"count":n} for k,n in steering.most_common()]}
+    (out/"vehicle_ffb_correlation.json").write_text(json.dumps(payload,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+    with (out/"synchronized_ffb_vehicle_timeline.csv").open("w",newline="",encoding="utf-8") as f:
+        if rows: w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows(rows)
+
 def main():
     ap=argparse.ArgumentParser(description=__doc__); ap.add_argument("capture",type=Path); ap.add_argument("--output",type=Path,required=True); args=ap.parse_args(); capture=args.capture.resolve(); out=args.output.resolve(); out.mkdir(parents=True,exist_ok=True)
     metadata=load_json(capture/"driveboard_raw.json"); native=load_json(capture/"native_activation.json"); virtual=load_json(capture/"virtual_driveboard_status.json")
@@ -118,6 +135,7 @@ def main():
     with (out/"native_ffb_timeline.csv").open("w",newline="",encoding="utf-8") as f:
         fields=list(Command.__dataclass_fields__); w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(asdict(x) for x in commands)
     (out/"native_ffb_analysis.json").write_text(json.dumps(summary,indent=2,sort_keys=True)+"\n",encoding="utf-8"); write_markdown(out/"NATIVE_FFB_ANALYSIS.md",summary,capture.name); write_component_reports(out,summary)
+    vehicle,vissues=load_vehicle(capture/"vehicle_ffb_v1.csv");write_correlations(out,vehicle,vissues)
     print(json.dumps(summary,indent=2,sort_keys=True)); return 0
 
 if __name__=="__main__": raise SystemExit(main())

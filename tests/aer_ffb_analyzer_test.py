@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import importlib.util, sys, tempfile
+import importlib.util, json, sys, tempfile
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]; MODULE=ROOT/"research/aer/tools/ffb_analyzer/analyze.py"
@@ -22,6 +22,9 @@ def main():
     with tempfile.TemporaryDirectory() as temp:
         path=Path(temp)/"x.aerbin"; path.write_bytes(analyzer.HEADER.pack(b"AERDBR1\0",1,analyzer.HEADER.size,0x01020304,b"AER_DRIVEBOARD_RAW_V1")+b"\1\2")
         _,parsed,problems=analyzer.read_capture(path); assert not parsed and problems==[f"trailing_partial_record_header_at={analyzer.HEADER.size}"]
+        vehicle=Path(temp)/"vehicle.csv";vehicle.write_text("#schema=AER_VEHICLE_FFB_V1\nsequence,timestamp_ns,event,front_left_road_mask,front_right_road_mask,command,value_b,front_tire_direction_s16\n1,10,send_out,4,4,123,2,-30\n")
+        rows,vissues=analyzer.load_vehicle(vehicle);assert not vissues and len(rows)==1
+        analyzer.write_correlations(Path(temp),rows,[]);correlation=json.loads((Path(temp)/"vehicle_ffb_correlation.json").read_text());assert correlation["send_rows"]==1
     print("AER FFB analyzer tests passed")
 
 if __name__=="__main__": main()

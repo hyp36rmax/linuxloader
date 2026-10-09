@@ -56,6 +56,8 @@ static void test_native_activation_contract(void)
     assert(transact(&transport,0x1d,0,0)==0x00);
     assert(transact(&transport,0x1e,0,0)==0x00);
     assert(transport.lifecycle==AER_VDB_READY);
+    for(int i=0;i<2000;i++)assert(aerVdbTransportTick(&transport));
+    assert(transport.lifecycle==AER_VDB_READY);
 
     /* A representative native runtime family is transport data, not interpreted force. */
     assert(transact(&transport,0x02,0x01,0x28)==0x00);

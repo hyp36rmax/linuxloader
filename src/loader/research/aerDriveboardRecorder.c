@@ -247,11 +247,7 @@ static int enqueueEvent(const AerQueuedEvent *event)
     if (!g_recorder.enabled)
         return 0;
 
-#ifdef AER_RECORDER_TESTING
     int lockResult = pthread_mutex_lock(&g_recorder.mutex);
-#else
-    int lockResult = pthread_mutex_trylock(&g_recorder.mutex);
-#endif
     if (lockResult != 0)
     {
         atomic_fetch_add(&g_recorder.droppedRecords, 1);

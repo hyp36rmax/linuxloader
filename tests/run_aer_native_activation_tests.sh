@@ -9,6 +9,7 @@ cc -std=c11 -D_POSIX_C_SOURCE=200809L -DAER_NATIVE_ACTIVATION_TESTING \
     -I"$root/src" \
     "$root/tests/aer_native_activation_test.c" \
     "$root/src/loader/research/aerNativeActivation.c" \
+    "$root/src/loader/research/aerVehicleTelemetry.c" \
     -o "$test_dir/aer_native_activation_test"
 
 "$test_dir/aer_native_activation_test" disabled "$test_dir/disabled.json"

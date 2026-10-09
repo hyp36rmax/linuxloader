@@ -27,6 +27,7 @@
 #include "research/aerDriveboardRecorder.h"
 #include "research/aerActivationDiagnostics.h"
 #include "research/aerNativeActivation.h"
+#include "research/aerVehicleTelemetry.h"
 #include "research/aerVirtualDriveboardBridge.h"
 
 
@@ -302,6 +303,7 @@ void __attribute__((destructor)) hook_shutdown()
     aerVdbBridgeShutdown();
     aerActivationDiagnosticsShutdown();
     aerNativeActivationShutdown();
+    aerVehicleTelemetryShutdown();
     aerDriveboardRecorderShutdown();
 }
 

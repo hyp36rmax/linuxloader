@@ -10,6 +10,7 @@ grep -aFq 'AER_DRIVEBOARD_RAW_V1' "$loader"
 grep -aFq 'AER_DRIVEBOARD_ACTIVATION_V1' "$loader"
 grep -aFq 'AER_NATIVE_ACTIVATION_V1' "$loader"
 grep -aFq 'AER_VIRTUAL_DRIVEBOARD_STATUS_V1' "$loader"
+grep -aFq 'AER_VEHICLE_FFB_V1' "$loader"
 
 # Keep the CI artifact, ZIP filename and embedded metadata tied to the exact source commit.
 commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
@@ -18,26 +19,27 @@ if [[ ! "$commit_sha" =~ ^[[:xdigit:]]{40}$ ]]; then
     exit 1
 fi
 short_commit="${commit_sha:0:7}"
-archive="LinuxLoader-DEV5-AER02H-WIN32-${short_commit}.zip"
+archive="LinuxLoader-AER04-FFB-Telemetry-WIN32-${short_commit}.zip"
 
 mkdir win-release
 cp "$loader" win-release/linuxloader.exe
 #cp libs/win32/SDL3.dll win-release/SDL3.dll
 cp -r libs/win32/ll-deps win-release/
 cp /usr/lib/gcc/i686-w64-mingw32/13-win32/libgcc_s_dw2-1.dll win-release/ll-deps/
-cp research/dev5/Run-DEV5-Native-FFB.cmd win-release/
-cp research/dev5/Finalize-DEV5-Capture.ps1 win-release/
-cp research/dev5/DEV5-virtual-driveboard.ini win-release/
-cp research/dev5/DEV5-README.txt win-release/
+cp research/aer04/Run-AER04-FFB-Telemetry.cmd win-release/
+cp research/aer04/Finalize-AER04-Capture.ps1 win-release/
+cp research/aer04/AER04-virtual-driveboard.ini win-release/
+cp research/aer04/AER04-README.txt win-release/
 cat > win-release/BUILD_INFO.txt <<EOF
 Full commit SHA: ${commit_sha}
 CI run ID: ${GITHUB_RUN_ID:-LOCAL}
 Platform: Windows i686 MinGW
-Research milestone: AER-02H DEV 5
+Research milestone: AER-04 FFB and vehicle telemetry
 Recorder schema: AER_DRIVEBOARD_RAW_V1
 Diagnostic version: AER_DRIVEBOARD_ACTIVATION_V1
 Native activation schema: AER_NATIVE_ACTIVATION_V1
 Virtual board status schema: AER_VIRTUAL_DRIVEBOARD_STATUS_V1
+Vehicle telemetry schema: AER_VEHICLE_FFB_V1
 Game revision target: DVP-0015A
 EOF
 
@@ -55,10 +57,10 @@ done
 
 required_package_files=(
     linuxloader.exe
-    Run-DEV5-Native-FFB.cmd
-    Finalize-DEV5-Capture.ps1
-    DEV5-virtual-driveboard.ini
-    DEV5-README.txt
+    Run-AER04-FFB-Telemetry.cmd
+    Finalize-AER04-Capture.ps1
+    AER04-virtual-driveboard.ini
+    AER04-README.txt
     BUILD_INFO.txt
 )
 for package_file in "${required_package_files[@]}"; do

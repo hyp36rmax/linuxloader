@@ -20,6 +20,7 @@
 #include "research/aerDriveboardRecorder.h"
 #include "research/aerActivationDiagnostics.h"
 #include "research/aerNativeActivation.h"
+#include "research/aerVehicleTelemetry.h"
 #include "research/aerVirtualDriveboardBridge.h"
 
 #if defined(__linux__)
@@ -103,6 +104,7 @@ void initMain(char *configPath, char *controlsPath)
     aerDriveboardRecorderInitialize(&aerMetadata);
     aerActivationDiagnosticsInitialize(getDvpName());
     aerNativeActivationInitialize(getDvpName(), getenv("AER_GAME_EXECUTABLE_SHA256"), getenv("AER_LOADER_COMMIT"));
+    aerVehicleTelemetryInitialize(getDvpName());
 
     initFpsLimiter();
 
