@@ -43,7 +43,7 @@ set "AER_NATIVE_ACTIVATION=1"
 set "AER_NATIVE_ACTIVATION_OUTPUT=%SESSION%\native_activation.json"
 set "AER_VIRTUAL_DRIVEBOARD_STATUS_OUTPUT=%SESSION%\virtual_driveboard_status.json"
 set "AER_VEHICLE_TELEMETRY=1"
-set "AER_VEHICLE_TELEMETRY_OUTPUT=%SESSION%\vehicle_ffb_v1.csv"
+set "AER_VEHICLE_TELEMETRY_OUTPUT=%SESSION%\vehicle_ffb_v2.csv"
 echo AER-04 starting. Capture: %SESSION%
 linuxloader.exe -g "." -c "AER04-virtual-driveboard.ini"
 set "LOADER_EXIT=%ERRORLEVEL%"
