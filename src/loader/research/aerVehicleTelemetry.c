@@ -48,7 +48,9 @@ static void writeRow(const char *event,const VehicleSnapshot *s,int channel,int 
 }
 void aerVehicleTelemetryInitialize(const char *revision)
 {
-    if(g_vehicle.initialized)return;memset(&g_vehicle,0,sizeof(g_vehicle));g_vehicle.initialized=1;
+    if(g_vehicle.initialized)return;
+    memset(&g_vehicle,0,sizeof(g_vehicle));
+    g_vehicle.initialized=1;
     if(!enabledValue(getenv("AER_VEHICLE_TELEMETRY"))||!revision||strcmp(revision,"DVP-0015A"))return;
     const char *path=getenv("AER_VEHICLE_TELEMETRY_OUTPUT");snprintf(g_vehicle.path,sizeof(g_vehicle.path),"%s",path&&path[0]?path:"aer_vehicle_ffb_v1.csv");
     g_vehicle.file=fopen(g_vehicle.path,"wb");if(!g_vehicle.file)return;
@@ -62,13 +64,19 @@ void aerVehicleTelemetryShutdown(void){if(g_vehicle.file){fflush(g_vehicle.file)
 int aerVehicleTelemetryEnabled(void){return g_vehicle.enabled;}
 void aerVehicleTelemetryObserveDataSet(const void *car,const void *carWork)
 {
-    (void)car;if(!g_vehicle.enabled)return;VehicleSnapshot s;memset(&s,0,sizeof(s));s.sequence=g_vehicle.sequence+1;s.timestamp=now();
+    (void)car;
+    if(!g_vehicle.enabled)return;
+    VehicleSnapshot s;
+    memset(&s,0,sizeof(s));
+    s.sequence=g_vehicle.sequence+1;
+    s.timestamp=now();
     if(carWork){const unsigned char *p=carWork;s.valid=VALID_CAR_WORK|VALID_FRONT_DIRECTION|VALID_ROAD_STATE;s.frontDirection=readI16(p,0x054);s.thresholdState=readF32(p,0x3ac);s.roadAggregate=readU32(p,0x3fc);s.frontLeftRoad=readU32(p,0x404);s.frontRightRoad=readU32(p,0x408);}g_vehicle.last=s;writeRow("data_set",&s,-1,-1,-1,-1,0);
 }
 void aerVehicleTelemetryObserveMoveSend(void){if(g_vehicle.enabled)writeRow("move_send",&g_vehicle.last,-1,-1,-1,-1,0);}
 void aerVehicleTelemetryObserveCommand(const unsigned char *bytes,int length)
 {
-    if(!g_vehicle.enabled||!bytes||length<3)return;int channels=length>=6?2:1;
+    if(!g_vehicle.enabled||!bytes||length<3)return;
+    int channels=length>=6?2:1;
     for(int channel=0;channel<channels;channel++){const unsigned char *p=bytes+channel*3;VehicleSnapshot s=g_vehicle.last;s.valid|=VALID_COMMAND;writeRow("send_out",&s,channel,p[0]&0x7f,p[1],p[2],0);}
 }
 #ifdef AER_VEHICLE_TELEMETRY_TESTING
