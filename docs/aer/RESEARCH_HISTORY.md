@@ -92,14 +92,80 @@ Commit `2acb3c0` published the [Native Steering Technical Reference](NATIVE_STEE
 
 Commit `f4ae0e7` published [Discovering OutRun 2 SP's Original Arcade Steering System](ARCADE_STEERING_DISCOVERY.md), a human-friendly account of why the research began, what surprised us, what the game establishes, and what remains unknown.
 
+## DEV 4 — live diagnosis of the loader bypass
+
+DEV 4 finally settled the earlier missing-write mystery: the configured loader replaced the original `CabinetCtrl_InitDriver()` with a return-one hook. During that capture, native driver state remained 0, cabinet check remained 0, and the steering callback never activated. The original game's FFB pipeline was intact; our loader configuration had prevented its original ownership from becoming active. This supersedes the earlier DEV 4 “instrument, not a completed result” wording above, which remains to show the chronology.
+
+## AER-02D through AER-02H — from offline model to live native commands
+
+The offline activation model and virtual drive-board architecture preserved original game state transitions and isolated synthetic calibration from physical steering hardware. DEV 5 exposed the critical SDX topology difference: two logical steering channels share a single `SERIAL0` transport and a seven-byte request frame. Our first one-channel implementation rejected the real game's first `FF 00 00 7D 00 00 02` probe and the native initializer entered error state 11.
+
+After adopting the verified two-channel framing, startup reached a **separate** SDX actuator-readiness check. A narrowly gated research-only actuator-readiness hook permitted gameplay without bypassing the native steering initializer or activating physical motors.
+
+**Commit `f7b892b` became our first live-validated native FFB recovery.** Jennifer reached driver state 12 and cabinet-check state 2; the original `CabinetCtrl_Main`, `DrCtrlDataSet`, `DrCtrlMoveSend`, `steerReqSendOut`, and `hardcomSend` paths executed during a normal race. The first successful session was `20261008-172718-8c375f9c`. Neither authentic drive-board firmware responses nor physical arcade torque were recovered by this proof.
+
+## AER-03 — making sense of the captured requests
+
+The first decoder separated serial startup traffic, continuous magnitude requests, patterns, idle slots, and logical channels. It was subsequently discovered that it treated byte 2 of a `0x0B` request as magnitude when Jennifer actually encodes the bounded magnitude in byte 1 shifted left three bits. Thus the early “all 283 magnitudes are 4” finding was **an analyzer error**, not a Sega steering characteristic.
+
+Reanalysis of existing recordings recovered continuous magnitude values between **4 and 11** (within the original 4–15 bound), alongside translated Pattern 10 and Pattern 13 observations. Those commands are original game-side requests; no pattern observation is proof of a specific physical kerb, texture, or motor effect.
+
+## AER-04 — synchronized vehicle telemetry and correction
+
+The initial AER-04 session captured 58,126 telemetry observations and 16,557 raw events with zero recorder drops. However, the observer applied verified `EVWORK_CAR` offsets to the separate `CAR_WORK` argument. **V1 road and tire-direction values therefore cannot be used for surface correlation.** The corrected V2 observer samples the intended pointer, and the analyzer quarantines V1 road data. The corrected V2 values still require one controlled live validation.
+
+The earlier live sessions also entered virtual transport FAULT after approximately 500 accepted writes. A recurring `0x00 → 0x07` command sequence exposed a transport-model error: zero requests occurring after READY were incorrectly treated as new calibration. Commit `fab8780` preserves READY for that runtime sequence with a regression fixture; live confirmation of sustained accepted writes is pending.
+
+For the full reconciled state, including source-versus-firmware boundaries, see [Live Native FFB Recovery Status](LIVE_NATIVE_FFB_RECOVERY_STATUS.md).
+
 ## Where the research stands
 
-The original game-side steering architecture is substantially understood. The loader activation path and original hardware response remain separate validation tracks. A future HYP36rforce Arcade profile may be informed by this evidence, but it would be an independent modern interpretation. Nothing in this history claims that the original board firmware or physical cabinet response has already been recreated.
+The original game-side steering architecture is substantially understood and
+has been validated during live gameplay through our isolated virtual drive
+board.
 
-## AER-03/AER-04 — runtime reconciliation and profile gate
+The research progressed from recovering Sega's native steering calculations
+to capturing their original commands, synchronizing vehicle telemetry,
+and identifying how road-contact classifications influence FFB requests.
 
-AER-03 first proved sustained native callbacks and command generation, but its recorder lost 28 events and its early magnitude interpretation made all confident observations appear to be 4. AER-04 corrected the EVWORK_CAR pointer, magnitude-byte interpretation, capture contention, and READY-idle watchdog behavior.
+Authentic Sega drive-board firmware behavior, physical motor torque, and
+cabinet force characteristics remain separate research questions.
 
-The complete V2 capture then showed native magnitude varying from 4 through 11 and preserved road masks beside original command requests. A separate analyzer bug still searched only for the V1 filename; correcting it exposed 37,268 valid road-context command rows. The active transport also showed that a known `0x03` configuration-family request may recur after READY; treating it as an initialization restart caused the following `0x0B` request to fail.
+## AER-03/AER-04 — Runtime Reconciliation and Profile Preparation
 
-The [AER Profile Implementation Blueprint](AER_PROFILE_IMPLEMENTATION_BLUEPRINT.md) is the resulting handoff. It separates recovered Sega behavior from our proposed modern DirectInput synthesis and keeps Reference+ untouched.
+AER-03 established native callback execution and steering-command generation.
+Its initial capture contained 28 dropped recorder events, and its original
+magnitude decoder incorrectly reported constant magnitude 4.
+
+AER-04 corrected the magnitude decoding, vehicle-state pointer,
+capture contention, and READY-state watchdog behavior.
+
+The completed V2 capture established native magnitude variation from 4
+through 11 and preserved front-tire road classifications alongside
+original FFB requests.
+
+A separate analyzer correction exposed 37,268 valid road-context
+command rows that had previously been overlooked because the analyzer
+searched only for the V1 telemetry filename.
+
+Additional runtime investigation identified a recurring configuration
+request, command 0x03, which could incorrectly move the virtual transport
+out of READY and cause subsequent 0x0B requests to fail.
+
+These findings informed the AER profile design while preserving the
+distinction between original game-side behavior and modern force synthesis.
+
+## AER Profile — Implementation Blueprint
+
+The [AER Profile Implementation Blueprint](AER_PROFILE_IMPLEMENTATION_BLUEPRINT.md)
+is the resulting engineering handoff.
+
+It uses independently verified Sega behavior as the foundation for a
+modern arcade-inspired force-feedback interpretation.
+
+The proposed profile remains separate from HYP36rforce Reference+.
+It does not modify the existing Reference+ force character or claim
+to reproduce Sega's original drive-board firmware.
+
+Physical force reproduction, modern wheel integration, and hardware
+validation remain separate implementation responsibilities.

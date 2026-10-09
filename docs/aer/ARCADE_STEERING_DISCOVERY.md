@@ -10,6 +10,14 @@ That led the investigation through the original *OutRun 2 SP SDX Rev A* executab
 
 For readers who want the addresses, equations, masks, tables, and packet details, the companion [Native Steering Technical Reference](NATIVE_STEERING_TECHNICAL_REFERENCE.md) documents the full lineage. The [Evidence Register](EVIDENCE_REGISTER.md) records the supporting findings and their confidence levels.
 
+## From disassembly to a working original-game signal
+
+The most satisfying change since this story was first written is that **the original steering pipeline now runs in the actual game**. In DEV 5, after correcting the two-channel SDX packet contract and handling the separate actuator-readiness gate, Jennifer completed its own driver initialization and cabinet check, registered its steering callback, and generated native commands throughout a race.
+
+I can now examine what Sega's game asks its steering hardware to do without a physical SDX motor connected. That isn't the same thing as *feeling* the original arcade force: the virtual board still supplies modeled responses, and the physical interpretation belongs to hardware and firmware we haven't recovered. But it turns the original question from “does the game generate these signals?” into “what conditions generate them, and what did the hardware do with them?”
+
+Our first attempts also taught us to correct our instruments. An early analyzer misread the packed magnitude and seemed to show a constant value of 4; the corrected decode recovers values 4–11. The first AER-04 telemetry observer sampled the wrong vehicle structure, so that recording's purported road classifications cannot identify kerbs or textures. The corrected V2 observer awaits live validation. The full chronology and limits are recorded in [Live Native FFB Recovery Status](LIVE_NATIVE_FFB_RECOVERY_STATUS.md).
+
 ## Finding Sega's Original Steering System
 
 The first major discovery was that the game contains a complete steering-output system. It does not just expose a stray steering value. The original code gathers vehicle and contact state, calculates a continuous request, selects shorter event-driven patterns, schedules those requests, and packages them for dedicated steering hardware. [AER-EV-EXE-002](EVIDENCE_REGISTER.md#aer-ev-exe-002--native-steering-output-pipeline)
@@ -90,7 +98,7 @@ Understanding the request path is not the same as reproducing the original arcad
 
 The [Hardware Validation Register](HARDWARE_VALIDATION_REGISTER.md) turns those unknowns into narrow, testable questions. It deliberately prioritizes firmware, service information, and bounded measurements over broad gameplay impressions.
 
-There is also an unresolved loader-side question. Static analysis proves the original output path exists, but earlier research captures showed polling without the regular gameplay writes expected from that path. An altered readiness or initialization transition is a strong explanation, not yet a demonstrated root cause. [AER-EV-EXE-003](EVIDENCE_REGISTER.md#aer-ev-exe-003--loader-activation-hypothesis)
+The earlier missing-write mystery has since been resolved in the research environment. DEV 4 confirmed the loader's cabinet-check bypass prevented the native initializer from completing. DEV 5 subsequently demonstrated original driver state 12, cabinet-check state 2 and sustained game-generated commands with an isolated virtual drive board. Recovered Sega firmware response semantics and physical motor behavior remain open questions. [AER-EV-EXE-003](EVIDENCE_REGISTER.md#aer-ev-exe-003--loader-activation-hypothesis)
 
 ## What This Could Mean for Modern Wheels
 
