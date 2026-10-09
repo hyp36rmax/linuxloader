@@ -42,6 +42,11 @@ Game-generated requests are never treated as proof of a particular torque, wavef
 
 | Evidence ID | Milestone | Layer | Finding | Confidence | Public use |
 |---|---|---|---|---|---|
+| AER-EV-LIVE-001 | DEV 5 | Native game request | Original states 12/2 and callback command path confirmed in gameplay | CONFIRMED | Both references |
+| AER-EV-LIVE-002 | DEV 5 | Game protocol | SDX two channels share one seven-byte SERIAL0 frame | CONFIRMED | Both references |
+| AER-EV-LIVE-003 | AER-03/04 | Game request | Correct `0x0B` magnitude is byte 1 >> 3; V1 decode superseded | CONFIRMED | Both references |
+| AER-EV-LIVE-004 | AER-04 | Measurement correction | V1 observed CAR_WORK at EVWORK_CAR offsets; V2 live validation pending | CONFIRMED | Technical |
+| AER-EV-LIVE-005 | AER-04 | Virtual runtime | READY-state zero/0x07 fault, regression correction awaiting live proof | CONFIRMED / PENDING | Technical |
 | AER-EV-EXE-001 | J.1 | Game state | Verified executable identity | CONFIRMED | Both references |
 | AER-EV-EXE-002 | J.1/K.9 | Game request | Native steering-output pipeline exists | CONFIRMED | Both references |
 | AER-EV-EXE-003 | J.1 | Research interpretation | Loader activation bypass may prevent normal output | STRONGLY SUPPORTED | Technical, qualified summary |
@@ -513,6 +518,44 @@ Game-generated requests are never treated as proof of a particular torque, wavef
 - **Correction:** Earlier approximately 60 Hz serial-read polling is not proof of FFB update frequency.
 - **Conclusion:** Authoritative callback frequency is **NOT ESTABLISHED** statically.
 
+## AER-02H / AER-04 — Live native recovery and corrected interpretations
+
+These findings supplement the static register without rewriting its historical evidence IDs. **All hardware response values below belong to the isolated virtual model, not an original Sega drive board.**
+
+### AER-EV-LIVE-001 — Original steering activation in real gameplay
+
+- **Milestone:** DEV 5 / AER-02H.
+- **Observation:** Verified DVP-0015A Jennifer reached original driver state 12, cabinet-check state 2, and repeatedly executed `CabinetCtrl_Main`, `DrCtrlDataSet`, `DrCtrlMoveSend`, `steerReqSendOut`, and `hardcomSend` in live gameplay.
+- **Evidence:** Successful DEV 5 session `20261008-172718-8c375f9c`; native activation observer and raw requests. First live-validated source baseline `f7b892b`.
+- **Confidence:** **CONFIRMED** for native game-side commands under the isolated virtual model; **UNKNOWN** for original hardware force behavior.
+- **Correction:** Supersedes the earlier interpretation that activation under LinuxLoader remains unresolved. DEV 4 separately confirmed that the previous configured cabinet-check bypass suppressed native initialization.
+
+### AER-EV-LIVE-002 — SDX dual-channel serial topology
+
+- **Milestone:** DEV 5 / SDX reconciliation.
+- **Observation:** The original game selects two logical steering channels, framed as one seven-byte transaction over SERIAL0; the first `FF 00 00 7D 00 00 02` probe was rejected when the virtual model expected four bytes.
+- **Evidence:** Original `CabinetCtrl_InitWork`, `steerReqSendOut`, `hardcomSend` and live captured first frame; [SDX Hardware Topology](SDX_HARDWARE_TOPOLOGY.md).
+- **Confidence:** **CONFIRMED** for game-side protocol and two L/R motor-driver assemblies. Original firmware/electrical semantics remain unknown.
+
+### AER-EV-LIVE-003 — Magnitude decoder correction
+
+- **Milestone:** AER-03 / AER-04 reanalysis.
+- **Observation:** The native `0x0B` continuous magnitude is packed into logical byte 1 shifted left three; the early analyzer erroneously read byte 2, producing a false constant-4 result. The corrected game-side requests varied **4–11** in existing captures, within the original `4–15` range.
+- **Confidence:** **CONFIRMED** for the command-packing rule and recovered distribution. Not physical torque. A separate direction bit is not established by treating packed byte-1 bit `0x10` as independent.
+
+### AER-EV-LIVE-004 — Invalid V1 vehicle-road observer lineage
+
+- **Milestone:** AER-04.
+- **Observation:** The V1 observer applied `EVWORK_CAR` offsets to the separate `CAR_WORK` argument of `DrCtrlDataSet`. V1 road masks and front-tire direction cannot be used as valid observed values.
+- **Evidence:** Hook call signature, observer source, unrealistic V1 road-field distributions. V2 now reads from the intended EVWORK_CAR argument, and older V1 road fields are excluded from the analyzer.
+- **Confidence:** **CONFIRMED** source defect. Live correctness of V2 field contents remains **unverified**.
+
+### AER-EV-LIVE-005 — Reproduced virtual READY-state fault
+
+- **Milestone:** AER-04 follow-up.
+- **Observation:** Successful live gameplay captures retained native callbacks but showed thousands of failed writes after the virtual board left READY. The recorded `0x00 → 0x07` sequence triggered a modeled calibration re-entry and then rejection. Commit `fab8780` prevents that READY-to-calibration transition in response to a runtime zero command.
+- **Confidence:** **CONFIRMED** for captured frames, failing write returns and original transport branch behavior; the correction is regression-tested, **not yet live validated** for sustained accepted writes.
+
 ## Hardware boundary
 
 ### AER-EV-HW-001 — Unresolved physical output
@@ -536,7 +579,7 @@ Game-generated requests are never treated as proof of a particular torque, wavef
 | Ordinal 20 globally | Universal cobblestone/roughness | Localized contact segment; material varies or remains unresolved | Cross-course comparison |
 | Pattern duration | Real-time duration | Callback ticks | Countdown owner and event scheduling |
 | Magnitude `4–15` | Possible torque scale | Game-side request scale only | Protocol boundary; no firmware evidence |
-| Missing writes | Native FFB may be absent | Native pipeline exists; activation remains unresolved | Complete call graph and initialization state machine |
+| Missing writes | Native FFB may be absent | DEV 4 bypass suppressed activation; DEV 5 recovered native steering commands in gameplay | DEV 4/5 live activation observers (AER-EV-LIVE-001) |
 
 ## Future documentation rule
 
