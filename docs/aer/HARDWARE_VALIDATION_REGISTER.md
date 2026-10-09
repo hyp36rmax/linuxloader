@@ -4,6 +4,12 @@ This register tracks questions that cannot be answered safely from the original 
 
 The original game-side pipeline is substantially understood. This document deliberately begins where that evidence ends: drive-board firmware, electrical behavior, cabinet mechanics, and real physical steering response.
 
+## Live game-side recovery update
+
+The earlier activation question has been resolved for the **isolated research runtime**: DEV 5 confirmed original driver state 12, cabinet-check state 2, and sustained native callback execution during live gameplay. It also established SDX's two logical steering channels over one SERIAL0 connection and a separate motion-actuator readiness dependency. See [Live Native FFB Recovery Status](LIVE_NATIVE_FFB_RECOVERY_STATUS.md).
+
+That proof does not establish authentic drive-board firmware responses or physical motor forces. The remaining runtime checks concern **transport durability after the READY-state fix** and **live validation of corrected AER_VEHICLE_FFB_V2 road fields**. This is distinct from original cabinet electrical/firmware validation.
+
 ## Validation principles
 
 - Prioritize original documentation and firmware analysis before physical testing.
@@ -36,7 +42,7 @@ Status values:
 | AER-HW-RESP-001 | What do valid drive-board response values mean? | Per-board byte validation and statuses are confirmed | Firmware state represented by each status | Firmware response construction or service manual | Yes, preferred | Possibly | Map responses during one normal initialization before inducing any fault | OPEN — STATIC FIRST |
 | AER-HW-ALARM-001 | What physical faults correspond to runtime status/alarm classes 1–3? | Game maps statuses to three alarm categories | Board-side fault sources and service meanings | Firmware and original service documentation | Yes | Possibly | Do not induce faults until documentation/firmware identifies safe conditions | BLOCKED — SOURCE NEEDED |
 | AER-HW-PAUSE-001 | What happens physically when the cabinet event is paused or suspended? | Pause/suspend skips the callback; `CabinetCtrl_Off()` sends an explicit zero request elsewhere | Whether another owner stops output or board retains its previous state | Complete pause caller audit | Useful | Yes for final behavior | After caller audit, pause following one low stable request and observe whether output decays, stops or persists | OPEN — STATIC FIRST |
-| AER-HW-ACT-001 | Why does the loader environment fail to reach regular outbound gameplay commands? | Complete native pipeline and readiness gates are confirmed; prior capture showed reads but no regular writes | Exact gate altered or bypassed by loader patches | Compare patch sites with original initialization transitions | No | No initially | Instrument only readiness/state transitions through first successful native write | OPEN — STATIC FIRST |
+| AER-HW-ACT-001 | Why does the loader environment fail to reach regular outbound gameplay commands? | Complete native pipeline and readiness gates are confirmed; prior capture showed reads but no regular writes | Exact gate altered or bypassed by loader patches | Compare patch sites with original initialization transitions | No | No initially | Instrument only readiness/state transitions through first successful native write | GAME-SIDE ACTIVATION CONFIRMED — FIRMWARE UNVERIFIED |
 | AER-HW-DUAL-001 | How are two steering channels used in SDX cabinet mode? | Sega documents two L/R motor-driver assemblies; Jennifer selects two logical channels, combines them into one seven-byte SERIAL0 packet, and consumes two replies | Firmware-side synchronization and electrical addressing | Original firmware or synchronized hardware capture | Yes, useful | Only for remaining timing/firmware questions | Observe normal initialization only after the isolated virtual contract is validated | TOPOLOGY CONFIRMED — FIRMWARE TIMING OPEN |
 
 ## Detailed validation notes
@@ -93,7 +99,7 @@ Only after this result may callback-duration ticks be expressed as approximate t
 
 ### AER-HW-ACT-001 — Loader activation
 
-The working hypothesis is not that native FFB is absent. Static evidence proves a full game-side output path. The unresolved question is which readiness, initialization, calibration, or event-ownership transition fails to complete in the loader environment.
+**Resolved for the isolated AER research runtime:** DEV 4 confirmed the existing cabinet-check bypass prevented the original driver from initializing. DEV 5 then demonstrated original driver state 12, cabinet check 2, native callback execution, and steering commands through the virtual board. The game-side activation question is closed under these conditions; original-board firmware fidelity is a separate question.
 
 The smallest diagnostic sequence is:
 
@@ -113,7 +119,7 @@ No force interpretation is required for this validation.
 
 Recommended order:
 
-1. `AER-HW-ACT-001` — establish the unmodified native activation path.
+1. `AER-HW-ACT-001` — **RESOLVED for isolated virtual-board activation**; retain the original cabinet/firmware validation boundary.
 2. `AER-HW-CADENCE-001` — establish callback cadence.
 3. Obtain and inspect original firmware or service information.
 4. `AER-HW-PATTERN-001` and `AER-HW-DURATION-001` — one isolated pattern.
