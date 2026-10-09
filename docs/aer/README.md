@@ -25,6 +25,8 @@ What the original motor torque, direction, and pattern waveforms felt like remai
 
 [SDX Steering Hardware Topology](SDX_HARDWARE_TOPOLOGY.md) reconciles Sega's two L/R motor-driver assemblies with Jennifer's two-slot SERIAL0 packet contract and the first DEV 5 runtime failure.
 
+[AER-03 Native FFB Capture Analysis](AER03_NATIVE_FFB_CAPTURE_ANALYSIS.md) records the first live command-distribution and timing findings. Its reusable decoder is under `research/aer/tools/ffb_analyzer/`.
+
 [Designing the Virtual Drive-Board Boundary](VIRTUAL_DRIVEBOARD_INTEGRATION_OVERVIEW.md) explains how that model could fit behind LinuxLoader's existing serial bridge while the game retains ownership of initialization.
 
 ### Technical research reference

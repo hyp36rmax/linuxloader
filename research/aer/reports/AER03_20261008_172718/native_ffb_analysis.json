@@ -1,0 +1,143 @@
+{
+  "continuous": {
+    "count": 283,
+    "direction_0": 64,
+    "direction_1": 219,
+    "direction_changes": 95,
+    "magnitude_distribution": {
+      "4": 283
+    },
+    "magnitude_transitions": 0
+  },
+  "decoded": {
+    "command_families": {
+      "continuous_or_configuration": 781,
+      "deactivation": 2,
+      "directional_or_initialization": 781,
+      "idle": 14591,
+      "pattern": 55
+    },
+    "gameplay_active_commands": 1617,
+    "gameplay_logical_commands": 16210,
+    "logical_commands": 19994,
+    "per_channel": {
+      "0": {
+        "active_commands": 1617,
+        "commands": 8105,
+        "families": {
+          "continuous_or_configuration": 781,
+          "deactivation": 1,
+          "directional_or_initialization": 781,
+          "idle": 6487,
+          "pattern": 55
+        }
+      },
+      "1": {
+        "active_commands": 0,
+        "commands": 8105,
+        "families": {
+          "deactivation": 1,
+          "idle": 8104
+        }
+      }
+    }
+  },
+  "input": {
+    "capture_complete": false,
+    "dropped_records_reported": 28,
+    "records_parsed": 10176,
+    "records_reported": 10176,
+    "schema": "AER_DRIVEBOARD_RAW_V1"
+  },
+  "integrity": {
+    "checksum_failures": 0,
+    "decoder_issues": [],
+    "failed_original_write_calls": 9482,
+    "overflow_records": 28,
+    "parser_issues": [],
+    "reads": 151,
+    "successful_original_write_calls": 515,
+    "virtual_transport": {
+      "accepted_frames": 544,
+      "bootstrap_result": 0,
+      "eligible": true,
+      "final_lifecycle": 7,
+      "native_command_frames": 1086,
+      "physical_isolation": true,
+      "physical_output_accessed": false,
+      "schema": "AER_VIRTUAL_DRIVEBOARD_STATUS_V1"
+    },
+    "writes": 9997
+  },
+  "limitations": [
+    "No synchronized vehicle position, road-classification, or collision-event telemetry is present.",
+    "Translated pattern values are not unique pattern indices where translations collide.",
+    "Command magnitudes are original game requests, not physical torque.",
+    "Inbound bytes are loader-synthesized responses, not authentic Sega firmware output.",
+    "Recorder overflow makes the timeline incomplete at 28 documented points.",
+    "Original write results and virtual accepted-frame counts are different observation layers."
+  ],
+  "native_pipeline": {
+    "callbacks": {
+      "CabinetCtrl_Check": 413,
+      "CabinetCtrl_InitDriver": 125,
+      "CabinetCtrl_Main": 10247,
+      "DrCtrlDataSet": 7323,
+      "DrCtrlMoveSend": 7323,
+      "hardcomSend": 10025,
+      "steerReqSendOut": 10025
+    },
+    "check_final": 2,
+    "driver_final": 12
+  },
+  "patterns": {
+    "count": 55,
+    "observations": [
+      {
+        "candidate_indices": "2|3|6|7|8|9|11|12|14|15",
+        "count": 34,
+        "direction": 0,
+        "translation": 0
+      },
+      {
+        "candidate_indices": "13",
+        "count": 10,
+        "direction": 0,
+        "translation": 2
+      },
+      {
+        "candidate_indices": "10",
+        "count": 4,
+        "direction": 1,
+        "translation": 4
+      },
+      {
+        "candidate_indices": "2|3|6|7|8|9|11|12|14|15",
+        "count": 3,
+        "direction": 1,
+        "translation": 0
+      },
+      {
+        "candidate_indices": "10",
+        "count": 2,
+        "direction": 0,
+        "translation": 4
+      },
+      {
+        "candidate_indices": "0",
+        "count": 2,
+        "direction": 0,
+        "translation": 11
+      }
+    ]
+  },
+  "timing": {
+    "active_inter_command_ms": {
+      "max": 15183.8954,
+      "median": 15.922350000000002,
+      "min": 0.0032,
+      "p95": 366.27
+    },
+    "shutdown_or_zero_commands": 16
+  }
+}

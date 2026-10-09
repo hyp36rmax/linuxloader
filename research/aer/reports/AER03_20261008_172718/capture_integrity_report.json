@@ -1,0 +1,50 @@
+{
+  "input": {
+    "capture_complete": false,
+    "dropped_records_reported": 28,
+    "records_parsed": 10176,
+    "records_reported": 10176,
+    "schema": "AER_DRIVEBOARD_RAW_V1"
+  },
+  "integrity": {
+    "checksum_failures": 0,
+    "decoder_issues": [],
+    "failed_original_write_calls": 9482,
+    "overflow_records": 28,
+    "parser_issues": [],
+    "reads": 151,
+    "successful_original_write_calls": 515,
+    "virtual_transport": {
+      "accepted_frames": 544,
+      "bootstrap_result": 0,
+      "eligible": true,
+      "final_lifecycle": 7,
+      "native_command_frames": 1086,
+      "physical_isolation": true,
+      "physical_output_accessed": false,
+      "schema": "AER_VIRTUAL_DRIVEBOARD_STATUS_V1"
+    },
+    "writes": 9997
+  },
+  "limitations": [
+    "No synchronized vehicle position, road-classification, or collision-event telemetry is present.",
+    "Translated pattern values are not unique pattern indices where translations collide.",
+    "Command magnitudes are original game requests, not physical torque.",
+    "Inbound bytes are loader-synthesized responses, not authentic Sega firmware output.",
+    "Recorder overflow makes the timeline incomplete at 28 documented points.",
+    "Original write results and virtual accepted-frame counts are different observation layers."
+  ],
+  "native_pipeline": {
+    "callbacks": {
+      "CabinetCtrl_Check": 413,
+      "CabinetCtrl_InitDriver": 125,
+      "CabinetCtrl_Main": 10247,
+      "DrCtrlDataSet": 7323,
+      "DrCtrlMoveSend": 7323,
+      "hardcomSend": 10025,
+      "steerReqSendOut": 10025
+    },
+    "check_final": 2,
+    "driver_final": 12
+  }
+}
