@@ -11,7 +11,14 @@ grep -aFq 'AER_DRIVEBOARD_ACTIVATION_V1' "$loader"
 grep -aFq 'AER_NATIVE_ACTIVATION_V1' "$loader"
 grep -aFq 'AER_VIRTUAL_DRIVEBOARD_STATUS_V1' "$loader"
 
-archive="LinuxLoader-DEV5-AER02H-WIN32.zip"
+# Keep the CI artifact, ZIP filename and embedded metadata tied to the exact source commit.
+commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
+if [[ ! "$commit_sha" =~ ^[[:xdigit:]]{40}$ ]]; then
+    echo "Invalid commit SHA for DEV 5 package: $commit_sha" >&2
+    exit 1
+fi
+short_commit="${commit_sha:0:7}"
+archive="LinuxLoader-DEV5-AER02H-WIN32-${short_commit}.zip"
 
 mkdir win-release
 cp "$loader" win-release/linuxloader.exe
@@ -23,7 +30,7 @@ cp research/dev5/Finalize-DEV5-Capture.ps1 win-release/
 cp research/dev5/DEV5-virtual-driveboard.ini win-release/
 cp research/dev5/DEV5-README.txt win-release/
 cat > win-release/BUILD_INFO.txt <<EOF
-Full commit SHA: ${GITHUB_SHA:-UNKNOWN}
+Full commit SHA: ${commit_sha}
 CI run ID: ${GITHUB_RUN_ID:-LOCAL}
 Platform: Windows i686 MinGW
 Research milestone: AER-02H DEV 5
@@ -65,7 +72,7 @@ cd ..
 unzip -p "$archive" linuxloader.exe > packaged-linuxloader.exe
 cmp "$loader" packaged-linuxloader.exe
 rm packaged-linuxloader.exe
-unzip -p "$archive" BUILD_INFO.txt | grep -Fq "Full commit SHA: ${GITHUB_SHA:-UNKNOWN}"
+unzip -p "$archive" BUILD_INFO.txt | grep -Fq "Full commit SHA: ${commit_sha}"
 for package_file in "${required_package_files[@]}"; do
     unzip -Z1 "$archive" | grep -Fxq "$package_file"
 done
