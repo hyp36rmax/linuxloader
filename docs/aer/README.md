@@ -39,6 +39,8 @@ What the original motor torque, direction, and pattern waveforms felt like remai
 
 [AER-02G Virtual Drive-Board Runtime Integration Specification](VIRTUAL_DRIVEBOARD_INTEGRATION_SPEC.md) defines revision locking, configuration conflicts, virtual descriptor behavior, calibration isolation, failure handling, and the pre-implementation validation gate.
 
+[AER Profile Implementation Blueprint](AER_PROFILE_IMPLEMENTATION_BLUEPRINT.md) consolidates the recovered steering character, command matrix, road/contact evidence, collision limits, modern interpretation boundary, integration architecture, and validation gate for a future independently selectable HYP36rforce Arcade Experience profile.
+
 [DEV 5 Virtual Drive-Board Assumptions](DEV5_VIRTUAL_BOARD_ASSUMPTIONS.md) records the exact synthetic response and centered-calibration policy used by the isolated Windows research build. These assumptions are not Sega firmware claims.
 
 ## Supporting references

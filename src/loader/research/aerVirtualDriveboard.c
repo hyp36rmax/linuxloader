@@ -107,11 +107,22 @@ static int applyNativeRequest(AerVdbTransport *t,int board,const uint8_t *reques
             t->lifecycle=AER_VDB_INITIALIZING;
             if(request[1]==0x30&&request[2]==0x7f)response=0x11;
             break;
-        case 0x7c: case 0x7d:
+        case 0x7c:
             t->lifecycle=AER_VDB_INITIALIZING;
             break;
+        case 0x7d:
+            /* The inactive SDX slot uses 0x7d while the other logical board
+             * carries gameplay traffic.  It is initialization traffic only
+             * before the native driver has reached READY. */
+            if(t->lifecycle!=AER_VDB_READY)
+                t->lifecycle=AER_VDB_INITIALIZING;
+            break;
         case 0x7a: case 0x03: case 0x06: case 0x08:
-            t->lifecycle=AER_VDB_CONFIGURING;
+            /* Jennifer can repeat a validated configuration request while the
+             * native gameplay callback is active.  It remains a legitimate
+             * request, not a restart of the initialization state machine. */
+            if(t->lifecycle!=AER_VDB_READY)
+                t->lifecycle=AER_VDB_CONFIGURING;
             break;
         case 0x00: case 0x04: case 0x70:
             /* Native gameplay can send zero/reset requests after readiness.

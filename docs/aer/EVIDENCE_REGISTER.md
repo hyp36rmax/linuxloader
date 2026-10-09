@@ -541,3 +541,31 @@ Game-generated requests are never treated as proof of a particular torque, wavef
 ## Future documentation rule
 
 The eventual human-friendly and technical references must derive factual claims from this register. Future HYP36rforce or Arcade-profile design decisions should cite applicable AER evidence but must be documented as independent interpretations, not as recovered Sega behavior.
+
+## AER-04 completion evidence
+
+### AER-EV-RUN-001 — Complete synchronized V2 capture
+
+- **Capture:** `20261008-200325-6ba226b8`
+- **Observation:** 20,341 raw transport records, zero drops, 72,714 synchronized vehicle/FFB rows, driver state 12, check state 2, and physical-output isolation true.
+- **Conclusion:** The corrected V2 state/command stream is suitable for deterministic profile-design replay.
+- **Confidence:** **CONFIRMED**
+
+### AER-EV-MAG-005 — Runtime magnitude variation
+
+- **Observation:** 1,692 valid continuous requests decode from `value_a >> 3`; magnitudes 4–11 occur with 1,687 transitions.
+- **Correction:** AER-03's apparent constant magnitude 4 came from the earlier byte interpretation, not constant native behavior.
+- **Conclusion:** Native magnitude is quantized but dynamic. It remains a request scale, not torque.
+- **Confidence:** **CONFIRMED**
+
+### AER-EV-RUN-002 — Runtime road/pattern coexistence
+
+- **Observation:** V2 contains 37,268 road-valid command rows and 190 channel-0 pattern requests across symmetric and asymmetric front classifications.
+- **Conclusion:** Road/contact context and patterns can be replayed together; the capture supports relationship analysis but not material causation by itself.
+- **Confidence:** Observations **CONFIRMED**; causal/material interpretation **UNRESOLVED**.
+
+### AER-EV-TRANSPORT-001 — Active configuration request lifecycle
+
+- **Observation:** Captured active traffic can include a legitimate `0x03` configuration-family request followed by continuous `0x0B`. Reclassifying READY as CONFIGURING caused the next request to fault.
+- **Correction:** Known configuration-family requests remain READY when already active; the original pre-READY configuration path and unknown-command rejection remain unchanged.
+- **Confidence:** **CONFIRMED** by captured sequence and deterministic regression.

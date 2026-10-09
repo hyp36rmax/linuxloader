@@ -142,6 +142,28 @@ def write_correlations(out,rows,issues):
     (out/"vehicle_ffb_correlation.json").write_text(json.dumps(payload,indent=2,sort_keys=True)+"\n",encoding="utf-8")
     with (out/"synchronized_ffb_vehicle_timeline.csv").open("w",newline="",encoding="utf-8") as f:
         if rows: w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows(rows)
+    return payload
+
+def write_profile_evidence(out,summary,rows,correlation):
+    send=[r for r in rows if r.get("event")=="send_out" and r.get("logical_channel")=="0"]
+    patterns=[r for r in send if r.get("command")=="123"]
+    pattern_values=Counter(r.get("value_b") for r in patterns)
+    pattern_road=Counter((r.get("value_b"),r.get("front_left_road_mask"),r.get("front_right_road_mask")) for r in patterns)
+    asymmetric=sum(r.get("front_left_road_mask")!=r.get("front_right_road_mask") for r in patterns)
+    payload={
+      "schema":"AER_PROFILE_EVIDENCE_V1",
+      "source_capture_complete":summary["input"]["capture_complete"],
+      "source_dropped_records":summary["input"]["dropped_records_reported"],
+      "continuous":summary["continuous"],
+      "patterns":summary["patterns"],
+      "synchronized":{"rows":len(rows),"channel_0_send_rows":len(send),"road_valid_rows":correlation["road_valid_rows"],"road_excluded_rows":correlation["road_excluded_rows"]},
+      "pattern_value_b_distribution":dict(sorted(pattern_values.items(),key=lambda item:int(item[0]))),
+      "pattern_rows_with_asymmetric_front_contact":asymmetric,
+      "leading_pattern_road_contexts":[{"value_b":k[0],"front_left":k[1],"front_right":k[2],"count":n} for k,n in pattern_road.most_common(32)],
+      "classification":{"continuous_magnitude":"CONFIRMED_GAME_REQUEST_NOT_TORQUE","road_masks":"CONFIRMED_NATIVE_CLASSIFIERS_MATERIAL_IDENTITY_UNRESOLVED","pattern_road_relationship":"STRONGLY_SUPPORTED_CORRELATION_NOT_CAUSATION","collision_identity":"UNKNOWN_NO_DIRECT_COLLISION_FIELD","firmware_waveform":"UNKNOWN"}
+    }
+    (out/"aer_profile_evidence_matrix.json").write_text(json.dumps(payload,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+    return payload
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__); ap.add_argument("capture",type=Path); ap.add_argument("--output",type=Path,required=True); args=ap.parse_args(); capture=args.capture.resolve(); out=args.output.resolve(); out.mkdir(parents=True,exist_ok=True)
@@ -152,7 +174,10 @@ def main():
     with (out/"native_ffb_timeline.csv").open("w",newline="",encoding="utf-8") as f:
         fields=list(Command.__dataclass_fields__); w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(asdict(x) for x in commands)
     (out/"native_ffb_analysis.json").write_text(json.dumps(summary,indent=2,sort_keys=True)+"\n",encoding="utf-8"); write_markdown(out/"NATIVE_FFB_ANALYSIS.md",summary,capture.name); write_component_reports(out,summary)
-    vehicle,vissues=load_vehicle(capture/"vehicle_ffb_v1.csv");write_correlations(out,vehicle,vissues)
+    vehicle_path=capture/"vehicle_ffb_v2.csv"
+    if not vehicle_path.exists(): vehicle_path=capture/"vehicle_ffb_v1.csv"
+    vehicle,vissues=load_vehicle(vehicle_path);correlation=write_correlations(out,vehicle,vissues)
+    write_profile_evidence(out,summary,vehicle,correlation)
     print(json.dumps(summary,indent=2,sort_keys=True)); return 0
 
 if __name__=="__main__": raise SystemExit(main())

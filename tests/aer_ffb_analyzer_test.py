@@ -25,9 +25,12 @@ def main():
         vehicle=Path(temp)/"vehicle.csv";vehicle.write_text("#schema=AER_VEHICLE_FFB_V1\nsequence,timestamp_ns,event,validity_flags,front_left_road_mask,front_right_road_mask,command,value_b,front_tire_direction_s16\n1,10,send_out,4,4,4,123,2,-30\n")
         rows,vissues=analyzer.load_vehicle(vehicle);assert "legacy_v1_road_fields_unreliable_wrong_structure_pointer" in vissues
         analyzer.write_correlations(Path(temp),rows,vissues);correlation=json.loads((Path(temp)/"vehicle_ffb_correlation.json").read_text());assert correlation["road_valid_rows"]==0
-        vehicle.write_text("#schema=AER_VEHICLE_FFB_V2\nsequence,timestamp_ns,event,validity_flags,front_left_road_mask,front_right_road_mask,command,value_b,front_tire_direction_s16\n1,10,send_out,4,4,8,123,2,-30\n2,20,send_out,4,0xffffffff,8,123,2,-30\n")
+        vehicle.write_text("#schema=AER_VEHICLE_FFB_V2\nsequence,timestamp_ns,event,validity_flags,front_left_road_mask,front_right_road_mask,command,value_b,front_tire_direction_s16,logical_channel\n1,10,send_out,4,4,8,123,2,-30,0\n2,20,send_out,4,0xffffffff,8,123,2,-30,0\n")
         rows,vissues=analyzer.load_vehicle(vehicle);assert not vissues and len(rows)==2
-        analyzer.write_correlations(Path(temp),rows,vissues);correlation=json.loads((Path(temp)/"vehicle_ffb_correlation.json").read_text());assert correlation["road_valid_rows"]==1 and correlation["road_excluded_rows"]==1
+        correlation=analyzer.write_correlations(Path(temp),rows,vissues);assert correlation["road_valid_rows"]==1 and correlation["road_excluded_rows"]==1
+        summary={"input":{"capture_complete":True,"dropped_records_reported":0},"continuous":{"count":1},"patterns":{"count":1}}
+        evidence=analyzer.write_profile_evidence(Path(temp),summary,rows,correlation)
+        assert evidence["schema"]=="AER_PROFILE_EVIDENCE_V1" and evidence["pattern_rows_with_asymmetric_front_contact"]==2
     print("AER FFB analyzer tests passed")
 
 if __name__=="__main__": main()

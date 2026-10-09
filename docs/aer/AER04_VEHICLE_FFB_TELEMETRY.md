@@ -59,3 +59,9 @@ Original continuous `0x0B` gameplay magnitude is decoded from the high five bits
 ## Prior captures
 
 Preserve original V1 CSV files and recorded bytes unchanged. Re-analyzing their raw native command packets with the corrected magnitude decoder is supported, but the missing correctly sampled EVWORK_CAR road masks cannot be recovered from V1. V2 output uses `vehicle_ffb_v2.csv`; a new live capture is only necessary for confirmed road-contact correlation, not for the command re-analysis.
+
+## Completed V2 runtime result
+
+Capture `20261008-200325-6ba226b8` is the first complete synchronized V2 evidence set: 20,341 raw records, zero drops, 72,714 vehicle/FFB rows, and 40,380 logical send rows. The corrected decoder observes 1,692 continuous magnitude requests spanning 4–11 with 1,687 transitions. This replaces the earlier apparent fixed-magnitude result.
+
+The analyzer now prefers `vehicle_ffb_v2.csv` and emits `aer_profile_evidence_matrix.json`. The matrices establish coexistence of pattern requests, symmetric/asymmetric front-contact masks, and changing front-tire direction. They do not independently name a material or collision type.

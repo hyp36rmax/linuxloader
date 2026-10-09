@@ -95,3 +95,11 @@ Commit `f4ae0e7` published [Discovering OutRun 2 SP's Original Arcade Steering S
 ## Where the research stands
 
 The original game-side steering architecture is substantially understood. The loader activation path and original hardware response remain separate validation tracks. A future HYP36rforce Arcade profile may be informed by this evidence, but it would be an independent modern interpretation. Nothing in this history claims that the original board firmware or physical cabinet response has already been recreated.
+
+## AER-03/AER-04 — runtime reconciliation and profile gate
+
+AER-03 first proved sustained native callbacks and command generation, but its recorder lost 28 events and its early magnitude interpretation made all confident observations appear to be 4. AER-04 corrected the EVWORK_CAR pointer, magnitude-byte interpretation, capture contention, and READY-idle watchdog behavior.
+
+The complete V2 capture then showed native magnitude varying from 4 through 11 and preserved road masks beside original command requests. A separate analyzer bug still searched only for the V1 filename; correcting it exposed 37,268 valid road-context command rows. The active transport also showed that a known `0x03` configuration-family request may recur after READY; treating it as an initialization restart caused the following `0x0B` request to fail.
+
+The [AER Profile Implementation Blueprint](AER_PROFILE_IMPLEMENTATION_BLUEPRINT.md) is the resulting handoff. It separates recovered Sega behavior from our proposed modern DirectInput synthesis and keeps Reference+ untouched.

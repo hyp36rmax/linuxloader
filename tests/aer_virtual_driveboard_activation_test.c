@@ -101,6 +101,31 @@ static void test_live_gameplay_zero_then_07_stays_ready(void)
     assert(errno==EPROTO&&transport.lifecycle==AER_VDB_FAULT);
 }
 
+static void test_live_configuration_then_continuous_stays_ready(void)
+{
+    AerVdbTransport transport;
+    uint8_t responses[2];
+    const uint8_t ready[7]={0x9d,0,0,0x1d,0,0,0};
+    const uint8_t configuration[7]={0x83,0x32,0x04,0x7d,0,0,0x48};
+    const uint8_t continuous[7]={0x8b,0x50,0x04,0x7d,0,0,0x22};
+
+    aerVdbTransportInit(&transport,2);
+    aerVdbTransportEnableNativePolicy(&transport,NULL,NULL);
+    assert(aerVdbTransportStart(&transport));
+    assert(aerVdbTransportWrite(&transport,ready,7)==7);
+    assert(aerVdbTransportRead(&transport,responses,2)==2);
+    assert(transport.lifecycle==AER_VDB_READY);
+
+    /* Exact active family observed before the rejected continuous request. */
+    assert(aerVdbTransportWrite(&transport,configuration,7)==7);
+    assert(aerVdbTransportRead(&transport,responses,2)==2);
+    assert(transport.lifecycle==AER_VDB_READY);
+    assert(aerVdbTransportWrite(&transport,continuous,7)==7);
+    assert(aerVdbTransportRead(&transport,responses,2)==2);
+    assert(transport.lifecycle==AER_VDB_READY);
+    assert(!transport.physicalOutputAccessed);
+}
+
 static void test_unknown_initialization_command_fails_closed(void)
 {
     AerVdbTransport transport;uint8_t request[4];
@@ -159,6 +184,7 @@ int main(void)
 {
     test_native_activation_contract();
     test_live_gameplay_zero_then_07_stays_ready();
+    test_live_configuration_then_continuous_stays_ready();
     test_unknown_initialization_command_fails_closed();
     test_dual_board_frame();
     test_captured_dev5_first_write_contract();
