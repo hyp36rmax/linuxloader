@@ -26,6 +26,7 @@
 #include "../graphics/glutBridge.h"
 #include "../research/aerActivationDiagnostics.h"
 #include "../research/aerNativeActivation.h"
+#include "../research/aerVirtualDriveboardBridge.h"
 #include "flowControl.h"
 #include "patchNetwork.h"
 
@@ -2421,12 +2422,17 @@ int initPatch()
             }
             detourFunction(0x0804d148, or2snprintf); // Fixes a bug in snprintf libc 2.39??
 
-            // Only apply these patches if skipOutrunCabinetCheck is enabled
+            // Legacy bypass applies to both native cabinet initialization and actuator readiness.
             if (config->skipOutrunCabinetCheck)
             {
-                // Bypass checks for Actuator and Force Feedback
                 aerActivationDiagnosticsCreateReturnOneHook(0x08103eaa, "steering-wheel-check");
                 aerActivationDiagnosticsCreateReturnOneHook(0x08105d88, "actuator-check");
+            }
+            else if (aerVdbBridgeEligible())
+            {
+                // Verified DVP-0015A AER research only: satisfy motion-actuator readiness
+                // without bypassing native steering initialization or enabling motor output.
+                aerActivationDiagnosticsCreateReturnOneHook(0x08105d88, "aer-motion-readiness-only");
             }
 
             // Always enable FFB commands output
