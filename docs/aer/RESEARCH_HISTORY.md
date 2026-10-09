@@ -92,6 +92,32 @@ Commit `2acb3c0` published the [Native Steering Technical Reference](NATIVE_STEE
 
 Commit `f4ae0e7` published [Discovering OutRun 2 SP's Original Arcade Steering System](ARCADE_STEERING_DISCOVERY.md), a human-friendly account of why the research began, what surprised us, what the game establishes, and what remains unknown.
 
+## DEV 4 — live diagnosis of the loader bypass
+
+DEV 4 finally settled the earlier missing-write mystery: the configured loader replaced the original `CabinetCtrl_InitDriver()` with a return-one hook. During that capture, native driver state remained 0, cabinet check remained 0, and the steering callback never activated. The original game's FFB pipeline was intact; our loader configuration had prevented its original ownership from becoming active. This supersedes the earlier DEV 4 “instrument, not a completed result” wording above, which remains to show the chronology.
+
+## AER-02D through AER-02H — from offline model to live native commands
+
+The offline activation model and virtual drive-board architecture preserved original game state transitions and isolated synthetic calibration from physical steering hardware. DEV 5 exposed the critical SDX topology difference: two logical steering channels share a single `SERIAL0` transport and a seven-byte request frame. Our first one-channel implementation rejected the real game's first `FF 00 00 7D 00 00 02` probe and the native initializer entered error state 11.
+
+After adopting the verified two-channel framing, startup reached a **separate** SDX actuator-readiness check. A narrowly gated research-only actuator-readiness hook permitted gameplay without bypassing the native steering initializer or activating physical motors.
+
+**Commit `f7b892b` became our first live-validated native FFB recovery.** Jennifer reached driver state 12 and cabinet-check state 2; the original `CabinetCtrl_Main`, `DrCtrlDataSet`, `DrCtrlMoveSend`, `steerReqSendOut`, and `hardcomSend` paths executed during a normal race. The first successful session was `20261008-172718-8c375f9c`. Neither authentic drive-board firmware responses nor physical arcade torque were recovered by this proof.
+
+## AER-03 — making sense of the captured requests
+
+The first decoder separated serial startup traffic, continuous magnitude requests, patterns, idle slots, and logical channels. It was subsequently discovered that it treated byte 2 of a `0x0B` request as magnitude when Jennifer actually encodes the bounded magnitude in byte 1 shifted left three bits. Thus the early “all 283 magnitudes are 4” finding was **an analyzer error**, not a Sega steering characteristic.
+
+Reanalysis of existing recordings recovered continuous magnitude values between **4 and 11** (within the original 4–15 bound), alongside translated Pattern 10 and Pattern 13 observations. Those commands are original game-side requests; no pattern observation is proof of a specific physical kerb, texture, or motor effect.
+
+## AER-04 — synchronized vehicle telemetry and correction
+
+The initial AER-04 session captured 58,126 telemetry observations and 16,557 raw events with zero recorder drops. However, the observer applied verified `EVWORK_CAR` offsets to the separate `CAR_WORK` argument. **V1 road and tire-direction values therefore cannot be used for surface correlation.** The corrected V2 observer samples the intended pointer, and the analyzer quarantines V1 road data. The corrected V2 values still require one controlled live validation.
+
+The earlier live sessions also entered virtual transport FAULT after approximately 500 accepted writes. A recurring `0x00 → 0x07` command sequence exposed a transport-model error: zero requests occurring after READY were incorrectly treated as new calibration. Commit `fab8780` preserves READY for that runtime sequence with a regression fixture; live confirmation of sustained accepted writes is pending.
+
+For the full reconciled state, including source-versus-firmware boundaries, see [Live Native FFB Recovery Status](LIVE_NATIVE_FFB_RECOVERY_STATUS.md).
+
 ## Where the research stands
 
-The original game-side steering architecture is substantially understood. The loader activation path and original hardware response remain separate validation tracks. A future HYP36rforce Arcade profile may be informed by this evidence, but it would be an independent modern interpretation. Nothing in this history claims that the original board firmware or physical cabinet response has already been recreated.
+The original game-side steering architecture is substantially understood and has been live-activated through isolated virtual hardware. Transport durability and V2 road telemetry remain live-validation tasks; authentic original hardware responses remain a separate research track. A future HYP36rforce Arcade profile may be informed by this evidence, but it would be an independent modern interpretation. Nothing in this history claims that the original board firmware or physical cabinet response has already been recreated.
