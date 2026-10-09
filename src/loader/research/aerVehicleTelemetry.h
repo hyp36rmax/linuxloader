@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define AER_VEHICLE_TELEMETRY_SCHEMA "AER_VEHICLE_FFB_V1"
+#define AER_VEHICLE_TELEMETRY_SCHEMA "AER_VEHICLE_FFB_V2"
 
 #ifdef __cplusplus
 extern "C" {
