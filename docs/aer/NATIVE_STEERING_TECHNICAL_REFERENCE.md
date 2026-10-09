@@ -8,6 +8,18 @@ The central finding is that the game contains a complete native steering-output 
 
 This reference uses the [Evidence Register](EVIDENCE_REGISTER.md) as its factual foundation and sends questions beyond the static-evidence boundary to the [Hardware Validation Register](HARDWARE_VALIDATION_REGISTER.md). It does not define a modern FFB implementation and does not treat HYP36rforce interpretation as recovered Sega behavior.
 
+### Live research status (DEV 5 → AER-04)
+
+The original native pipeline below is **no longer just a static reconstruction**. During live gameplay under the isolated virtual drive board, Jennifer reached driver state 12 and cabinet-check state 2, installed its original callback, and emitted steering requests. This is confirmation of game-side behavior, **not** physical Sega FFB sensation or firmware responses. See [Live Native FFB Recovery Status](LIVE_NATIVE_FFB_RECOVERY_STATUS.md) and evidence IDs AER-EV-LIVE-001 through AER-EV-LIVE-005.
+
+The SDX target uses two logical steering slots per seven-byte SERIAL0 packet, with separate motion-actuator readiness. Successful startup required a research-only readiness hook for the actuator subsystem; it did **not** require replacing native `CabinetCtrl_InitDriver`.
+
+**Decoder correction:** `0x0B` magnitude is `logical_request[1] >> 3`, bounded by the verified game-side range `4–15`. The initial capture analyzer used byte 2 and incorrectly reported constant magnitude 4. Existing recordings show magnitudes **4–11** when decoded correctly. The packed magnitude byte does not itself prove an independent direction bit. For `0x7B` discrete patterns, direction and translation are separate as originally traced.
+
+**Telemetry correction:** AER_VEHICLE_FFB_V1 used the CAR_WORK pointer with EVWORK_CAR offsets and does not establish road classifications. AER_VEHICLE_FFB_V2 reads from EVWORK_CAR; it still awaits a live check. Existing V1 command bytes can be reanalyzed but absent historical road-state samples cannot be recreated.
+
+**Transport qualification:** native callbacks continued when virtual SERIAL0 began returning failed writes. The source-level `0x00 → 0x07` READY-state fault has a regression correction (`fab8780`) awaiting live durability validation. Do not equate game-side command generation with successful delivery to the virtual transport during the entire session.
+
 ## 2. Original executable and asset identity
 
 All executable addresses in this reference apply to:
@@ -415,6 +427,6 @@ This investigation became more useful as several early interpretations were corr
 | Ordinal 20 universally meant cobblestone or roughness | It is a localized contact category whose universal material meaning is not established | AER-EV-COLI-005–006, AER-EV-VIS-003 |
 | Pattern durations were real-time values | They are eligible callback ticks | AER-EV-TIME-002 |
 | Magnitude `4–15` might be a torque scale | It is a game-side request scale; torque is not established | AER-EV-MAG-004–005 |
-| Missing loader writes might mean native FFB was absent | The native pipeline is complete; loader activation remains unresolved | AER-EV-EXE-002–003 |
+| Missing loader writes might mean native FFB was absent | DEV 4 loader bypass blocked native activation; DEV 5 confirmed the original pipeline in gameplay | AER-EV-EXE-002–003, AER-EV-LIVE-001 |
 
 These corrections are part of the result, not mistakes to hide. They show why the project keeps game state, game-generated requests, hardware response, research interpretation, and future HYP36rforce design as separate layers.
