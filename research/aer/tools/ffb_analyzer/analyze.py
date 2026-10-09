@@ -57,7 +57,11 @@ def decode_commands(records,gameplay_start):
         phase="gameplay" if gameplay_start is not None and r.timestamp_ns>=gameplay_start else "initialization_or_menu"
         for channel in range(1 if len(frame)==4 else 2):
             x=frame[channel*3:channel*3+3]; cmd=x[0]&0x7f; direction=magnitude=translation=None; candidates=""
-            if cmd==0x0b and phase=="gameplay": direction=1 if x[1]&0x10 else 0; magnitude=x[2] if 4<=x[2]<=15 else None
+            if cmd==0x0b and phase=="gameplay":
+                # Jennifer packs the quantized magnitude into byte 1, shifted left 3.
+                # Byte 2 is not the magnitude; do not infer polarity from magnitude bits.
+                value=x[1]>>3
+                magnitude=value if 4<=value<=15 else None
             elif cmd==0x7b: translation=x[2]&0x0f; direction=1 if x[2]&0x10 else 0; candidates="|".join(map(str,PATTERN_TRANSLATIONS.get(translation,[])))
             commands.append(Command(r.sequence,r.timestamp_ns,(r.timestamp_ns-start)/1e6,phase,channel,cmd,COMMAND_NAMES.get(cmd,"unknown"),x[1],x[2],direction,magnitude,translation,candidates,r.result,frame.hex(" "),okay))
     return commands,issues
@@ -82,7 +86,7 @@ def analyze(records,commands,metadata,native,virtual,parser_issues,decode_issues
       "continuous":{"count":len(continuous),"magnitude_distribution":dict(sorted(Counter(c.magnitude for c in continuous).items())),"direction_0":sum(c.direction_bit==0 for c in continuous),"direction_1":sum(c.direction_bit==1 for c in continuous),"direction_changes":sum(a.direction_bit!=b.direction_bit for a,b in zip(continuous,continuous[1:])),"magnitude_transitions":sum(a.magnitude!=b.magnitude for a,b in zip(continuous,continuous[1:]))},
       "patterns":{"count":len(patterns),"observations":[{"translation":k[0],"direction":k[1],"candidate_indices":k[2],"count":n} for k,n in sorted(pattern_counts.items(),key=lambda item:(-item[1],item[0]))]},
       "timing":{"active_inter_command_ms":stats(intervals),"shutdown_or_zero_commands":sum(c.command==0 for c in commands)},
-      "limitations":["No synchronized vehicle position, road-classification, or collision-event telemetry is present.","Translated pattern values are not unique pattern indices where translations collide.","Command magnitudes are original game requests, not physical torque.","Inbound bytes are loader-synthesized responses, not authentic Sega firmware output.","Recorder overflow makes the timeline incomplete at 28 documented points.","Original write results and virtual accepted-frame counts are different observation layers."]}
+      "limitations":["Road correlations require AER_VEHICLE_FFB_V2; V1 road fields were read from the wrong structure pointer.","Translated pattern values are not unique pattern indices where translations collide.","Command magnitudes are original game requests, not physical torque.","Inbound bytes are loader-synthesized responses, not authentic Sega firmware output.","Recorder completeness must be evaluated from each input capture\u0027s own metadata; do not assume earlier losses.","Original write results and virtual accepted-frame counts are different observation layers."]}
 
 def write_markdown(path,s,capture):
     i,d,c,p,t=s["integrity"],s["decoded"],s["continuous"],s["patterns"],s["timing"]
@@ -90,7 +94,7 @@ def write_markdown(path,s,capture):
     lines += [f"| {k} | {v} |" for k,v in c["magnitude_distribution"].items()]
     lines += ["","## Discrete patterns","",f"Observed requests: {p['count']:,}.","","| Translation | Direction | Candidate indices | Count |","|---:|---:|---|---:|"]
     lines += [f"| 0x{x['translation']:02X} | {x['direction']} | {x['candidate_indices'] or 'unresolved'} | {x['count']} |" for x in p["observations"]]
-    lines += ["","Pattern 10 maps uniquely to `0x04`; Pattern 13 maps uniquely to `0x02`. Zero translations remain ambiguous.","","## Surface, kerb, and collision evidence","","No synchronized road classification, position, or collision state is present. The capture cannot directly label a request cobblestone, kerb, wall, or vehicle contact. Pattern 10 remains a classification-family transition, not a universal cobblestone label.","","## Timing","",f"Active serial-request interval statistics in milliseconds: `{json.dumps(t['active_inter_command_ms'],sort_keys=True)}`. Callback counts, serial writes, accepted virtual frames, and firmware durations remain separate measurements.","","## Capture integrity","",f"- Events: {s['input']['records_parsed']:,}",f"- Writes / reads: {i['writes']:,} / {i['reads']:,}",f"- Dropped / overflow records: {s['input']['dropped_records_reported']} / {i['overflow_records']}",f"- Checksum failures: {i['checksum_failures']}",f"- Virtual accepted frames: {i['virtual_transport'].get('accepted_frames')}",f"- Physical isolation: {i['virtual_transport'].get('physical_isolation')}","","The raw recorder marks this capture incomplete because 28 events were dropped. Native activation and sustained command generation are established; exact event-for-event reconstruction is not.","","## Evidence limits",""]+[f"- {x}" for x in s["limitations"]]
+    lines += ["","Pattern 10 maps uniquely to `0x04`; Pattern 13 maps uniquely to `0x02`. Zero translations remain ambiguous.","","## Surface, kerb, and collision evidence","","No synchronized road classification, position, or collision state is present. The capture cannot directly label a request cobblestone, kerb, wall, or vehicle contact. Pattern 10 remains a classification-family transition, not a universal cobblestone label.","","## Timing","",f"Active serial-request interval statistics in milliseconds: `{json.dumps(t['active_inter_command_ms'],sort_keys=True)}`. Callback counts, serial writes, accepted virtual frames, and firmware durations remain separate measurements.","","## Capture integrity","",f"- Events: {s['input']['records_parsed']:,}",f"- Writes / reads: {i['writes']:,} / {i['reads']:,}",f"- Dropped / overflow records: {s['input']['dropped_records_reported']} / {i['overflow_records']}",f"- Checksum failures: {i['checksum_failures']}",f"- Virtual accepted frames: {i['virtual_transport'].get('accepted_frames')}",f"- Physical isolation: {i['virtual_transport'].get('physical_isolation')}","","Interpret capture completeness from the input metadata; earlier dropped-event counts do not apply to every session.","","## Evidence limits",""]+[f"- {x}" for x in s["limitations"]]
     path.write_text("\n".join(lines)+"\n",encoding="utf-8")
 
 def write_component_reports(out,s):
@@ -112,14 +116,27 @@ def write_component_reports(out,s):
 def load_vehicle(path):
     if not path.exists(): return [],["vehicle_telemetry_unavailable"]
     lines=path.read_text(encoding="utf-8-sig").splitlines()
-    if not lines or lines[0]!="#schema=AER_VEHICLE_FFB_V1": return [],["vehicle_schema_missing_or_unsupported"]
+    if not lines: return [],["vehicle_schema_missing_or_unsupported"]
+    if lines[0]=="#schema=AER_VEHICLE_FFB_V1":
+        return list(csv.DictReader(lines[1:])),["legacy_v1_road_fields_unreliable_wrong_structure_pointer"]
+    if lines[0]!="#schema=AER_VEHICLE_FFB_V2": return [],["vehicle_schema_missing_or_unsupported"]
     return list(csv.DictReader(lines[1:])),[]
 
 def write_correlations(out,rows,issues):
     send=[r for r in rows if r.get("event")=="send_out"]
-    road=Counter((r.get("front_left_road_mask"),r.get("front_right_road_mask"),r.get("command"),r.get("value_b")) for r in send)
-    steering=Counter((r.get("front_tire_direction_s16"),r.get("command"),r.get("value_b")) for r in send)
-    payload={"schema":"AER_FFB_VEHICLE_CORRELATION_V1","rows":len(rows),"send_rows":len(send),"issues":issues,
+    # V1 sampled CAR_WORK rather than EVWORK_CAR; never present its masks as verified.
+    road_valid=not issues and all("validity_flags" in r for r in send)
+    def one_hot_or_zero(text):
+        try:
+            value=int(text)
+            return 0<=value<=0xffffffff and (value==0 or (value & (value-1))==0)
+        except (ValueError,TypeError):
+            return False
+    valid_road_rows=[r for r in send if road_valid and (int(r["validity_flags"]) & 0x4)
+        and one_hot_or_zero(r.get("front_left_road_mask")) and one_hot_or_zero(r.get("front_right_road_mask"))]
+    road=Counter((r.get("front_left_road_mask"),r.get("front_right_road_mask"),r.get("command"),r.get("value_b")) for r in valid_road_rows)
+    steering=Counter((r.get("front_tire_direction_s16"),r.get("command"),r.get("value_b")) for r in send) if not issues else Counter()
+    payload={"schema":"AER_FFB_VEHICLE_CORRELATION_V2","rows":len(rows),"send_rows":len(send),"road_valid_rows":len(valid_road_rows),"road_excluded_rows":len(send)-len(valid_road_rows),"issues":issues,
       "road_command_matrix":[{"front_left":k[0],"front_right":k[1],"command":k[2],"value_b":k[3],"count":n} for k,n in road.most_common()],
       "steering_command_matrix":[{"front_tire_direction":k[0],"command":k[1],"value_b":k[2],"count":n} for k,n in steering.most_common()]}
     (out/"vehicle_ffb_correlation.json").write_text(json.dumps(payload,indent=2,sort_keys=True)+"\n",encoding="utf-8")
