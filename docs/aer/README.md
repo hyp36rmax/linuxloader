@@ -19,9 +19,9 @@ What the original motor torque, direction, and pattern waveforms felt like remai
 
 **The original Sega game-side steering path has now been observed running during real OutRun 2 SP SDX gameplay.** DEV 5 reached driver state 12, cabinet-check state 2, and the native callbacks without forcing those states; the game emitted steering requests through our physically isolated virtual SERIAL0 board. The board's response bytes and calibration remain synthetic, and this does not establish authentic arcade motor force.
 
-The current work is command analysis and correlation, not another attempt to recover basic initialization. The AER-04 V1 recording sampled road data from the wrong vehicle structure; corrected V2 instrumentation awaits live correlation. A separate transport READY-state correction at `fab8780` also awaits a sustained live-traffic check.
+The current work is evidence-based interpretation and experimental profile development, not another attempt to recover basic initialization. The V2 live recording corrected the earlier V1 road-pointer mistake and established road-contact/command correlations; a later virtual-transport READY/configuration correction still awaits fault-free full-session confirmation.
 
-[**Read the current verified results, corrections, and remaining boundaries →**](LIVE_NATIVE_FFB_RECOVERY_STATUS.md)
+[**Current cross-repository research status →**](CROSS_REPOSITORY_STATUS.md) · [DEV 5 historical live-recovery record](LIVE_NATIVE_FFB_RECOVERY_STATUS.md)
 
 ## Choose a starting point
 
@@ -60,7 +60,7 @@ The current work is command analysis and correlation, not another attempt to rec
 
 ## Current status
 
-The original game-side steering pipeline has been **live-validated** through isolated virtual hardware. The next research checks concern sustaining accepted transport writes after the READY-state correction and verifying the corrected AER-04 V2 road-state telemetry. The physical questions remain at the original drive-board boundary: torque, polarity, waveform, timing, calibration motion, and firmware behavior. Kerb and surface-texture attribution is not yet established.
+The original game-side steering pipeline has been **live-validated**, and the AER-04 V2 recording established meaningful front-tire road-mask and command correlation. The [implementation-ready AER profile blueprint](AER_PROFILE_IMPLEMENTATION_BLUEPRINT.md) is an *independent modern interpretation*, not recovered Sega firmware. The latest virtual-board configuration-transition fix still requires sustained live acceptance validation. Exact physical torque, waveform, timing, and kerb/material-specific sensations remain unverified.
 
 ## Relationship to future projects
 
