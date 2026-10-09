@@ -114,7 +114,11 @@ static int applyNativeRequest(AerVdbTransport *t,int board,const uint8_t *reques
             t->lifecycle=AER_VDB_CONFIGURING;
             break;
         case 0x00: case 0x04: case 0x70:
-            t->lifecycle=AER_VDB_CALIBRATING;
+            /* Native gameplay can send zero/reset requests after readiness.
+             * Do not interpret those as a new calibration session.
+             * Before READY, the original calibration lifecycle is unchanged. */
+            if(t->lifecycle!=AER_VDB_READY)
+                t->lifecycle=AER_VDB_CALIBRATING;
             if(command==0x04&&t->sensorWriter){
                 t->sensorPosition=t->sensorCenter;
                 t->sensorTarget=t->sensorCenter;
