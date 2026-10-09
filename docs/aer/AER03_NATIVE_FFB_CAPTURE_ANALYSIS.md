@@ -1,5 +1,7 @@
 # AER-03 — Native FFB Capture Analysis
 
+> **Historical decoder correction (AER-04):** This page preserves the first AER-03 report, but the original analyzer incorrectly used logical request byte 2 to read continuous `0x0B` magnitude and treated a magnitude bit as a separate direction flag. Jennifer packs the quantized 4–15 magnitude into byte 1 (`value_a >> 3`). The claim that all 283 valid observations were magnitude 4, and the 95 “direction changes” derived from that field, are **superseded decoder findings**, not verified game behavior. Reanalysis of the same raw recording yielded magnitudes 4–11. See [Live Native FFB Recovery Status](LIVE_NATIVE_FFB_RECOVERY_STATUS.md) and the corrected analyzer. Original raw bytes remain unchanged.
+
 The successful DEV 5 session `20261008-172718-8c375f9c` is the first live recording in which Jennifer completed native initialization, reached driver state 12 and cabinet-check state 2, ran its original steering callback, and produced sustained gameplay requests.
 
 The reusable analyzer and exact generated reports are preserved under:
@@ -14,7 +16,7 @@ research/aer/reports/AER03_20261008_172718/
 - All 10,176 binary records parse structurally and all complete four/seven-byte frames pass XOR validation.
 - The native callback boundary separates startup/configuration traffic from 16,210 logical gameplay-slot observations.
 - Channel 0 contains all 1,617 non-idle gameplay requests; SDX channel 1 remains idle in this capture.
-- There are 283 bounded continuous-magnitude observations. Every observed magnitude is the game-side minimum `4`; encoded direction changes 95 times.
+- **Superseded V1 decode:** 283 incorrectly bounded magnitude observations appeared to be 4, with 95 apparent byte-derived direction changes. See the correction above; do not use these figures as original force behavior.
 - There are 55 pattern requests: six unique Pattern-10 translations, ten unique Pattern-13 translations, two Pattern-0 translations, and 37 zero translations that cannot be mapped to a unique internal index.
 - Median active serial-request spacing is about 15.92 ms. Long gaps demonstrate that serial intervals are event/request timing, not a fixed force-update clock.
 
