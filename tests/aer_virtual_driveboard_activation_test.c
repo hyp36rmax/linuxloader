@@ -67,6 +67,35 @@ static void test_native_activation_contract(void)
     assert(!transport.physicalOutputAccessed);
 }
 
+static void test_live_gameplay_zero_then_07_stays_ready(void)
+{
+    AerVdbTransport transport;
+    aerVdbTransportInit(&transport,1);
+    aerVdbTransportEnableNativePolicy(&transport,NULL,NULL);
+    assert(aerVdbTransportStart(&transport));
+    assert(transact(&transport,0x1d,0,0)==0x00);
+    assert(transport.lifecycle==AER_VDB_READY);
+
+    /* Recorded live sequence on channel 0:
+     * 80 00 00 00 00 00 00 followed by
+     * 87 00 7f 07 00 7f 00 (dual channel framing).
+     * The zero command must not restart calibration. */
+    assert(transact(&transport,0x00,0,0)==0x00);
+    assert(transport.lifecycle==AER_VDB_READY);
+    assert(transact(&transport,0x07,0,0x7f)==0x00);
+    assert(transport.lifecycle==AER_VDB_READY);
+    assert(!transport.physicalOutputAccessed);
+
+    /* A previously unknown 0x07 during initialization is still rejected. */
+    aerVdbTransportInit(&transport,1);
+    aerVdbTransportEnableNativePolicy(&transport,NULL,NULL);
+    assert(aerVdbTransportStart(&transport));
+    uint8_t request[4]; frame(request,0x07,0,0x7f);
+    errno=0;
+    assert(aerVdbTransportWrite(&transport,request,sizeof(request))==-1);
+    assert(errno==EPROTO&&transport.lifecycle==AER_VDB_FAULT);
+}
+
 static void test_unknown_initialization_command_fails_closed(void)
 {
     AerVdbTransport transport;uint8_t request[4];
@@ -124,6 +153,7 @@ static void test_captured_dev5_first_write_contract(void)
 int main(void)
 {
     test_native_activation_contract();
+    test_live_gameplay_zero_then_07_stays_ready();
     test_unknown_initialization_command_fails_closed();
     test_dual_board_frame();
     test_captured_dev5_first_write_contract();
