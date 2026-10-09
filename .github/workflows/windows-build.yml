@@ -43,10 +43,10 @@ jobs:
         ./tests/run_aer_offline_activation_model_tests.sh
         ./tests/run_aer_virtual_driveboard_bridge_tests.sh
         scripts/windows/windows-build.sh
-        echo "artifact_name=LinuxLoader-DEV5-AER02H-WIN32" >> "$GITHUB_OUTPUT"
+        echo "artifact_name=LinuxLoader-DEV5-AER02H-WIN32-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
 
     - name: Upload AER-02H DEV 5 Windows artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.build.outputs.artifact_name }}
-        path: "LinuxLoader-DEV5-AER02H-WIN32.zip"
+        path: "${{ steps.build.outputs.artifact_name }}.zip"
