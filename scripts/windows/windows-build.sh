@@ -10,7 +10,7 @@ grep -aFq 'AER_DRIVEBOARD_RAW_V1' "$loader"
 grep -aFq 'AER_DRIVEBOARD_ACTIVATION_V1' "$loader"
 grep -aFq 'AER_NATIVE_ACTIVATION_V1' "$loader"
 grep -aFq 'AER_VIRTUAL_DRIVEBOARD_STATUS_V1' "$loader"
-grep -aFq 'AER_VEHICLE_FFB_V1' "$loader"
+grep -aFq 'AER_VEHICLE_FFB_V2' "$loader"
 
 # Keep the CI artifact, ZIP filename and embedded metadata tied to the exact source commit.
 commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
@@ -39,7 +39,7 @@ Recorder schema: AER_DRIVEBOARD_RAW_V1
 Diagnostic version: AER_DRIVEBOARD_ACTIVATION_V1
 Native activation schema: AER_NATIVE_ACTIVATION_V1
 Virtual board status schema: AER_VIRTUAL_DRIVEBOARD_STATUS_V1
-Vehicle telemetry schema: AER_VEHICLE_FFB_V1
+Vehicle telemetry schema: AER_VEHICLE_FFB_V2
 Game revision target: DVP-0015A
 EOF
 
