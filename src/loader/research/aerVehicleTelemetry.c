@@ -7,7 +7,7 @@
 
 #include "aerDriveboardRecorder.h"
 
-enum { VALID_CAR_WORK=1u<<0, VALID_FRONT_DIRECTION=1u<<1, VALID_ROAD_STATE=1u<<2, VALID_COMMAND=1u<<3 };
+enum { VALID_EVWORK_CAR=1u<<0, VALID_FRONT_DIRECTION=1u<<1, VALID_ROAD_STATE=1u<<2, VALID_COMMAND=1u<<3 };
 typedef struct VehicleSnapshot {
     uint64_t sequence, timestamp;
     int16_t frontDirection;
@@ -52,7 +52,7 @@ void aerVehicleTelemetryInitialize(const char *revision)
     memset(&g_vehicle,0,sizeof(g_vehicle));
     g_vehicle.initialized=1;
     if(!enabledValue(getenv("AER_VEHICLE_TELEMETRY"))||!revision||strcmp(revision,"DVP-0015A"))return;
-    const char *path=getenv("AER_VEHICLE_TELEMETRY_OUTPUT");snprintf(g_vehicle.path,sizeof(g_vehicle.path),"%s",path&&path[0]?path:"aer_vehicle_ffb_v1.csv");
+    const char *path=getenv("AER_VEHICLE_TELEMETRY_OUTPUT");snprintf(g_vehicle.path,sizeof(g_vehicle.path),"%s",path&&path[0]?path:"aer_vehicle_ffb_v2.csv");
     g_vehicle.file=fopen(g_vehicle.path,"wb");if(!g_vehicle.file)return;
     fprintf(g_vehicle.file,"#schema=%s\nsequence,timestamp_ns,event,validity_flags,front_tire_direction_s16,road_aggregate_mask,front_left_road_mask,threshold_state_f32,front_right_road_mask,vehicle_id,speed,steering_input,vehicle_orientation,logical_channel,command,value_a,value_b,checksum_known\n",AER_VEHICLE_TELEMETRY_SCHEMA);
     g_vehicle.enabled=1;
@@ -64,13 +64,13 @@ void aerVehicleTelemetryShutdown(void){if(g_vehicle.file){fflush(g_vehicle.file)
 int aerVehicleTelemetryEnabled(void){return g_vehicle.enabled;}
 void aerVehicleTelemetryObserveDataSet(const void *car,const void *carWork)
 {
-    (void)car;
+    (void)carWork;
     if(!g_vehicle.enabled)return;
     VehicleSnapshot s;
     memset(&s,0,sizeof(s));
     s.sequence=g_vehicle.sequence+1;
     s.timestamp=now();
-    if(carWork){const unsigned char *p=carWork;s.valid=VALID_CAR_WORK|VALID_FRONT_DIRECTION|VALID_ROAD_STATE;s.frontDirection=readI16(p,0x054);s.thresholdState=readF32(p,0x3ac);s.roadAggregate=readU32(p,0x3fc);s.frontLeftRoad=readU32(p,0x404);s.frontRightRoad=readU32(p,0x408);}g_vehicle.last=s;writeRow("data_set",&s,-1,-1,-1,-1,0);
+    if(car){const unsigned char *p=car;s.valid=VALID_EVWORK_CAR|VALID_FRONT_DIRECTION|VALID_ROAD_STATE;s.frontDirection=readI16(p,0x054);s.thresholdState=readF32(p,0x3ac);s.roadAggregate=readU32(p,0x3fc);s.frontLeftRoad=readU32(p,0x404);s.frontRightRoad=readU32(p,0x408);}g_vehicle.last=s;writeRow("data_set",&s,-1,-1,-1,-1,0);
 }
 void aerVehicleTelemetryObserveMoveSend(void){if(g_vehicle.enabled)writeRow("move_send",&g_vehicle.last,-1,-1,-1,-1,0);}
 void aerVehicleTelemetryObserveCommand(const unsigned char *bytes,int length)
