@@ -15,6 +15,14 @@ It initializes and calibrates dedicated steering hardware, frames requests for o
 
 What the original motor torque, direction, and pattern waveforms felt like remains a hardware and firmware question. AER documents that boundary rather than filling it with assumptions.
 
+## Live recovery milestone
+
+**The original Sega game-side steering path has now been observed running during real OutRun 2 SP SDX gameplay.** DEV 5 reached driver state 12, cabinet-check state 2, and the native callbacks without forcing those states; the game emitted steering requests through our physically isolated virtual SERIAL0 board. The board's response bytes and calibration remain synthetic, and this does not establish authentic arcade motor force.
+
+The current work is command analysis and correlation, not another attempt to recover basic initialization. The AER-04 V1 recording sampled road data from the wrong vehicle structure; corrected V2 instrumentation awaits live correlation. A separate transport READY-state correction at `fab8780` also awaits a sustained live-traffic check.
+
+[**Read the current verified results, corrections, and remaining boundaries →**](LIVE_NATIVE_FFB_RECOVERY_STATUS.md)
+
 ## Choose a starting point
 
 ### Human-friendly explanation
@@ -25,7 +33,7 @@ What the original motor torque, direction, and pattern waveforms felt like remai
 
 [SDX Steering Hardware Topology](SDX_HARDWARE_TOPOLOGY.md) reconciles Sega's two L/R motor-driver assemblies with Jennifer's two-slot SERIAL0 packet contract and the first DEV 5 runtime failure.
 
-[AER-03 Native FFB Capture Analysis](AER03_NATIVE_FFB_CAPTURE_ANALYSIS.md) records the first live command-distribution and timing findings. Its reusable decoder is under `research/aer/tools/ffb_analyzer/`.
+[AER-03 Native FFB Capture Analysis](AER03_NATIVE_FFB_CAPTURE_ANALYSIS.md) preserves the first live command-distribution and timing findings, with an explicit correction to its superseded magnitude decoder. Its reusable decoder is under `research/aer/tools/ffb_analyzer/`.
 
 [AER-04 Native FFB and Vehicle Telemetry](AER04_VEHICLE_FFB_TELEMETRY.md) defines the synchronized passive vehicle/command schema, verified signal lineage, integrity corrections, and explicit unknown fields.
 
@@ -50,7 +58,7 @@ What the original motor torque, direction, and pattern waveforms felt like remai
 
 ## Current status
 
-The game-side steering architecture is substantially reconstructed. The most important open runtime question is why the loader environment has not yet completed the native activation path through regular gameplay writes. The most important physical questions begin at the drive-board boundary: torque, polarity, waveform, timing, calibration motion, and firmware behavior.
+The original game-side steering pipeline has been **live-validated** through isolated virtual hardware. The next research checks concern sustaining accepted transport writes after the READY-state correction and verifying the corrected AER-04 V2 road-state telemetry. The physical questions remain at the original drive-board boundary: torque, polarity, waveform, timing, calibration motion, and firmware behavior. Kerb and surface-texture attribution is not yet established.
 
 ## Relationship to future projects
 
